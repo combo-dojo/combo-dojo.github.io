@@ -835,15 +835,32 @@ var Vision = (function () {
       if (!best || c.score > best.score) best = c;
     }
     // a smaller grid can sit inside a bigger board with the same cell size: prefer the widest near-best fit
+    // ...but only when the extra cells of the bigger grid really hold orbs (an iPad's side panel next to a 6×5
+    // board can otherwise pass for a seventh column)
+    var base0 = best;
     for (var ci = 0; ci < cands.length; ci++) {
-      var cc = cands[ci], sameCell = Math.abs(cc.w / cc.cols - best.w / best.cols) < best.w / best.cols * 0.06;
-      if (cc.w > best.w * 1.1 && (cc.score >= best.score * 0.9 || (sameCell && cc.score >= best.score * 0.8))) best = cc;
+      var cc = cands[ci], sameCell = Math.abs(cc.w / cc.cols - base0.w / base0.cols) < base0.w / base0.cols * 0.06;
+      if (cc.w > best.w * 1.1 && (cc.score >= base0.score * 0.9 || (sameCell && cc.score >= base0.score * 0.8)) && extraCellsOk(img, cc, base0)) best = cc;
     }
     if (!best) { var R = (forced || [5, 6])[0], C = (forced || [5, 6])[1]; return { rows: R, cols: C, x: 0, y: img.height - img.width * R / C, w: img.width, score: 0 }; }
     // dimmed boards (操作開始固定): faded orbs have no saturated ring to align on, so find the board as the
     // full-width band between the dark line under the HP bar and the black strip at the bottom of the phone
     if (best.score < 55) { var dr = dimRect(img, forced); if (dr) return dr; }
     return best;
+  }
+  // the cells of grid g lying outside grid inner must look like orbs too: their worst row or column of extra cells
+  // has to align about as well as the inner board does
+  function extraCellsOk(img, g, inner) {
+    var cell = g.w / g.cols, ix0 = inner.x, iy0 = inner.y, ix1 = inner.x + inner.w, iy1 = inner.y + inner.w * inner.rows / inner.cols, n = 0, sum = 0, worst = 1e9, lines = {};
+    for (var r = 0; r < g.rows; r++) for (var c = 0; c < g.cols; c++) {
+      var cx = g.x + (c + 0.5) * cell, cy = g.y + (r + 0.5) * cell;
+      if (cx > ix0 && cx < ix1 && cy > iy0 && cy < iy1) continue;
+      var sc = alignScore(img, cx - cell / 2, cy - cell / 2, cell, 1, 1), key = cx < ix0 || cx > ix1 ? "c" + c : "r" + r;
+      (lines[key] = lines[key] || []).push(sc); n++; sum += sc;
+    }
+    if (!n) return true;
+    Object.keys(lines).forEach(function (k) { var a = lines[k], m = a.reduce(function (x, y) { return x + y; }, 0) / a.length; if (m < worst) worst = m; });
+    return worst >= inner.score * 0.6;
   }
   function rowMean(img, y) {
     var W = img.width, d = img.data, s = 0, n = 0;
