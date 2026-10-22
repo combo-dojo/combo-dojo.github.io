@@ -259,7 +259,7 @@ body.m-pool .tabs button[aria-pressed="true"] { background: linear-gradient(#1f4
       </div>
       <div class="editbar" id="editBar" hidden>
         <p class="hint" data-i18n="editHint"></p>
-        <div class="minirow" id="miniEditRow" hidden><canvas class="shotmini" id="shotMiniEdit" data-i18n-aria="miniAria"></canvas><span class="hint" data-i18n="miniHint"></span></div>
+        <div class="minirow" id="miniEditRow" hidden><canvas class="shotmini" id="shotMiniEdit" data-i18n-aria="miniAria" data-i18n-title="miniAria"></canvas></div>
         <div class="palette" id="palette"></div>
         <label class="dimtoggle" for="dim"><span class="switch"><input type="checkbox" id="dim"><span></span></span><span data-i18n="dimT"></span></label>
       </div>
@@ -1604,7 +1604,7 @@ I18N.ja.editHint = I18N.ja.editHint.replace("読み取りミスを記憶させ�
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v34", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v35", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
@@ -3527,6 +3527,7 @@ I18N.ja.editHint = I18N.ja.editHint.replace("読み取りミスを記憶させ�
     document.querySelectorAll("[data-i18n-html]").forEach(function (el) { el.innerHTML = t(el.dataset.i18nHtml); });
     document.querySelectorAll("[data-i18n-ph]").forEach(function (el) { el.placeholder = t(el.dataset.i18nPh); });
     document.querySelectorAll("[data-i18n-aria]").forEach(function (el) { el.setAttribute("aria-label", t(el.dataset.i18nAria)); });
+    document.querySelectorAll("[data-i18n-title]").forEach(function (el) { el.title = t(el.dataset.i18nTitle); });
     Array.prototype.forEach.call($("langSeg").children, function (b) { b.setAttribute("aria-pressed", b.dataset.lang === prefs.lang ? "true" : "false"); });
     $("btnEdit").textContent = S.edit ? t("btnEditDone") : t("btnEdit");
     buildTimePresets(); syncSkinNote(); buildPalette(); syncHell(); syncSe(); if (S.mode === "pattern") Pat.render();
