@@ -1149,6 +1149,11 @@ var Vision = (function () {
       if (p[2] > 190 && p[1] > 150 && p[2] - p[0] > 25) P.push([a, b]);
     }
     if (P.length < 25) return 0;
+    // the badge is a solid little bar; a water orb's pale droplets or a light rim along its bottom are not
+    var a0 = 1, a1 = 0, b0 = 1, b1 = 0;
+    for (i = 0; i < P.length; i++) { a0 = Math.min(a0, P[i][0]); a1 = Math.max(a1, P[i][0]); b0 = Math.min(b0, P[i][1]); b1 = Math.max(b1, P[i][1]); }
+    var fill = P.length * 0.015 * 0.015 / ((a1 - a0 + 0.015) * (b1 - b0 + 0.015));
+    if (!(fill >= 0.5 || (fill >= 0.25 && b0 >= 0.24))) return 0; // (thorns break a badge up, but it then sits low)
     for (i = 0; i < P.length; i++) { mx += P[i][0]; my += P[i][1]; } mx /= P.length; my /= P.length;
     for (i = 0; i < P.length; i++) { sx += (P[i][0] - mx) * (P[i][0] - mx); sy += (P[i][1] - my) * (P[i][1] - my); }
     return Math.sqrt(sx / P.length) / Math.max(1e-6, Math.sqrt(sy / P.length));
@@ -1308,12 +1313,13 @@ var Vision = (function () {
   // Roulette cells sit on a light gold patterned tile, so their corners are gold where a plain cell shows the dark
   // board. Corners are measured one by one; a corner counts when it is warm AND clearly lighter than this board's
   // usual corner, so cloud spill-over and thorn tips (light but grey) don't count.
+  // (each corner: [L, b, a]; gold is yellow-ish, so a stays low — pink heal-orb edges reaching the corners are red)
   function cornerStats(img, cx, cy, cell) {
     var out = [];
     for (var sx = -1; sx <= 1; sx += 2) for (var sy = -1; sy <= 1; sy += 2) {
-      var L = 0, B = 0, m = 0;
-      for (var a = 0.38; a <= 0.461; a += 0.02) for (var b = 0.38; b <= 0.461; b += 0.02) { var l = lab01(img, cx + sx * a * cell, cy + sy * b * cell); L += l[0]; B += l[2]; m++; }
-      out.push([L / m, B / m]);
+      var L = 0, A = 0, B = 0, m = 0;
+      for (var a = 0.38; a <= 0.461; a += 0.02) for (var b = 0.38; b <= 0.461; b += 0.02) { var l = lab01(img, cx + sx * a * cell, cy + sy * b * cell); L += l[0]; A += l[1]; B += l[2]; m++; }
+      out.push([L / m, B / m, A / m]);
     }
     return out;
   }
@@ -1382,7 +1388,7 @@ var Vision = (function () {
     out.roulette.forEach(function (cs) { if (cs) cs.forEach(function (q) { allL.push(q[0]); }); });
     allL.sort(function (a, b) { return a - b; });
     var goldT = Math.max(38, (allL.length ? allL[Math.floor(allL.length / 2)] : 30) + 10);
-    var gold = out.roulette.map(function (cs) { return cs ? cs.filter(function (q) { return q[0] >= goldT && q[1] >= 8.5; }).length : 0; });
+    var gold = out.roulette.map(function (cs) { return cs ? cs.filter(function (q) { return q[0] >= goldT && q[1] >= 8.5 && q[2] < 19; }).length : 0; });
     for (j = 0; j < N; j++) {
       if (out.cloud[j]) { out.codes.push(10); out.conf.push(1); out.feats.push(null); out.thorn.push(false); out.roulette[j] = false; out.tape[j] = false; continue; }
       var tp = out.tape[j] || false, th = !tp && ts[j] > THORN && ts[j] > top * 0.5, k2 = ks[j], f2 = fs[j];
@@ -1811,7 +1817,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v39", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v40", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
