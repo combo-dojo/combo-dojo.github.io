@@ -1811,7 +1811,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v38", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v39", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
@@ -2037,10 +2037,39 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
       g.forEach(function (a, j) { var sc = lopsided(a.v) * 2 + med[j]; if (sc < bestS) { bestS = sc; bestI = a.i; } });
       best[code] = bestI;
     });
+    // the grid can be a few pixels off and games don't always centre an orb in its cell, so find the orb's real
+    // edges first: rows / columns through its middle where most pixels are vivid or bright (the board is dull and dark)
+    function fit(i) {
+      var cx = R.x + (i % b.cols + 0.5) * cell, cy = R.y + (Math.floor(i / b.cols) + 0.5) * cell, H = cell * 0.62, band = cell * 0.22;
+      function on(x, y) {
+        x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= d.width || y >= d.height) return 0;
+        var k = (y * d.width + x) * 4, r = d.data[k], g = d.data[k + 1], bl = d.data[k + 2], mx = Math.max(r, g, bl), mn = Math.min(r, g, bl);
+        return mx - mn > 48 || mx > 205 ? 1 : 0;
+      }
+      function run(prof, n) { // the stretch of "orb" lines through the middle
+        var m = Math.floor(n / 2), lo = m, hi = m, lim = 0.45;
+        if (prof[m] < lim) return null;
+        while (lo > 0 && prof[lo - 1] >= lim) lo--;
+        while (hi < n - 1 && prof[hi + 1] >= lim) hi++;
+        return [lo, hi];
+      }
+      var n = Math.max(24, Math.round(H * 2)), st = H * 2 / (n - 1), px = [], py = [], j, q, c;
+      for (j = 0; j < n; j++) {
+        var off = -H + j * st, sx = 0, sy = 0, cnt = 0;
+        for (q = -band; q <= band; q += Math.max(1, band / 6)) { sx += on(cx + off, cy + q); sy += on(cx + q, cy + off); cnt++; }
+        px.push(sx / cnt); py.push(sy / cnt);
+      }
+      var rx = run(px, n), ry = run(py, n);
+      if (!rx || !ry) return null;
+      var w = (rx[1] - rx[0] + 1) * st, h = (ry[1] - ry[0] + 1) * st, sz = Math.max(w, h);
+      if (sz < cell * 0.7 || sz > cell * 1.1) return null;
+      return { x: cx - H + (rx[0] + rx[1]) / 2 * st, y: cy - H + (ry[0] + ry[1]) / 2 * st, s: sz };
+    }
     var added = 0;
     Object.keys(best).forEach(function (k) {
-      var code = +k, i = best[k], Z = 112, k2 = cell * 0.98;
-      var x0 = R.x + (i % b.cols + 0.5) * cell - k2 / 2, y0 = R.y + (Math.floor(i / b.cols) + 0.5) * cell - k2 / 2;
+      var code = +k, i = best[k], Z = 112, f = fit(i), k2 = f ? f.s * 1.02 : cell * 0.98;
+      var x0 = (f ? f.x : R.x + (i % b.cols + 0.5) * cell) - k2 / 2, y0 = (f ? f.y : R.y + (Math.floor(i / b.cols) + 0.5) * cell) - k2 / 2;
+      S.skinFit = S.skinFit || {}; S.skinFit[code] = f;
       var o = document.createElement("canvas"); o.width = o.height = Z;
       var ox = o.getContext("2d"); ox.imageSmoothingQuality = "high"; ox.beginPath();
       if (code === 5 && ox.roundRect) ox.roundRect(Z * 0.03, Z * 0.03, Z * 0.94, Z * 0.94, Z * 0.16); else ox.arc(Z / 2, Z / 2, Z * 0.49, 0, Math.PI * 2);
