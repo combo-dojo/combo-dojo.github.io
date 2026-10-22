@@ -1817,7 +1817,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v40", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v41", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
@@ -2032,6 +2032,16 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
       for (var yy = 5; yy < n; yy++) for (var xx = 0; xx < 4; xx++) { var a = (yy * n + xx) * 3, b2 = (yy * n + (n - 1 - xx)) * 3; for (var ch = 0; ch < 3; ch++) s += Math.abs(v[a + ch] - v[b2 + ch]); }
       return s;
     }
+    function badgeDiff(i) {
+      var cx = R.x + (i % b.cols + 0.5) * cell, cy = R.y + (Math.floor(i / b.cols) + 0.5) * cell, s2 = 0, n = 0;
+      function at(x, y) { x = Math.max(0, Math.min(d.width - 1, Math.round(x))); y = Math.max(0, Math.min(d.height - 1, Math.round(y))); return (y * d.width + x) * 4; }
+      for (var a = 0.2; a <= 0.461; a += 0.02) for (var bb = 0.2; bb <= 0.461; bb += 0.02) {
+        var p = at(cx + a * cell, cy + bb * cell), q = at(cx - a * cell, cy + bb * cell);
+        s2 += Math.abs(d.data[p] - d.data[q]) + Math.abs(d.data[p + 1] - d.data[q + 1]) + Math.abs(d.data[p + 2] - d.data[q + 2]); n++;
+      }
+      return s2 / n;
+    }
+    var badged = {};
     S.shotCodes.forEach(function (code, i) {
       if (code < 0 || code > 9 || thorny(b.orbs[i]) || noclr(b.orbs[i]) || weak(b.orbs[i]) || b.flags[i] & (F_CLOUD | F_ROUL)) return;
       if ((S.shotConf[i] == null ? 1 : S.shotConf[i]) < 0.2) return;
@@ -2040,8 +2050,13 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     Object.keys(groups).forEach(function (code) {
       var g = groups[code], bestI = g[0].i, bestS = Infinity, med = [];
       g.forEach(function (a) { var s = 0; g.forEach(function (o) { for (var q = 0; q < a.v.length; q++) s += Math.abs(a.v[q] - o.v[q]); }); med.push(g.length > 1 ? s / (g.length - 1) : 0); });
-      g.forEach(function (a, j) { var sc = lopsided(a.v) * 2 + med[j]; if (sc < bestS) { bestS = sc; bestI = a.i; } });
-      best[code] = bestI;
+      // +/− badges in the lower-right corner: compare that corner with the mirrored lower-left one on the real pixels
+      // and skip thorn lines the reader didn't flag (they are symmetric, so the badge test lets them through)
+      var T = g.map(function (a) { return Vision.thornScore(d, R.x, R.y, R.w, b.rows, b.cols, Math.floor(a.i / b.cols), a.i % b.cols); });
+      var clean = T.some(function (x) { return x < 0.05; });
+      var L = g.map(function (a, j) { return clean && T[j] >= 0.05 ? 1e9 : badgeDiff(a.i); }), Lmin = Math.min.apply(null, L);
+      g.forEach(function (a, j) { if (L[j] > Lmin + 30) return; var sc = lopsided(a.v) * 2 + med[j]; if (sc < bestS) { bestS = sc; bestI = a.i; } });
+      best[code] = bestI; badged[code] = badgeDiff(bestI) > 120;
     });
     // the grid can be a few pixels off and games don't always centre an orb in its cell, so find the orb's real
     // edges first: rows / columns through its middle where most pixels are vivid or bright (the board is dull and dark)
@@ -2062,14 +2077,18 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
       var n = Math.max(24, Math.round(H * 2)), st = H * 2 / (n - 1), px = [], py = [], j, q, c;
       for (j = 0; j < n; j++) {
         var off = -H + j * st, sx = 0, sy = 0, cnt = 0;
-        for (q = -band; q <= band; q += Math.max(1, band / 6)) { sx += on(cx + off, cy + q); sy += on(cx + q, cy + off); cnt++; }
+        // measure through the upper / left part of the orb only: +/− badges sit in the lower-right corner and would
+        // stretch the edges (and the chord just off the middle is still almost the full width)
+        for (q = -band; q <= -band * 0.1; q += Math.max(1, band / 6)) { sx += on(cx + off, cy + q); sy += on(cx + q, cy + off); cnt++; }
         px.push(sx / cnt); py.push(sy / cnt);
       }
       var rx = run(px, n), ry = run(py, n);
       if (!rx || !ry) return null;
       var w = (rx[1] - rx[0] + 1) * st, h = (ry[1] - ry[0] + 1) * st, sz = Math.max(w, h);
-      if (sz < cell * 0.7 || sz > cell * 1.1) return null;
-      return { x: cx - H + (rx[0] + rx[1]) / 2 * st, y: cy - H + (ry[0] + ry[1]) / 2 * st, s: sz };
+      if (sz < cell * 0.8 || sz > cell * 1.06) return null;
+      var fx = cx - H + (rx[0] + rx[1]) / 2 * st, fy = cy - H + (ry[0] + ry[1]) / 2 * st, lim = cell * 0.08;
+      if (Math.abs(fx - cx) > lim || Math.abs(fy - cy) > lim) return null; // a big shift means something else got measured
+      return { x: fx, y: fy, s: sz };
     }
     var added = 0;
     Object.keys(best).forEach(function (k) {
@@ -2080,6 +2099,10 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
       var ox = o.getContext("2d"); ox.imageSmoothingQuality = "high"; ox.beginPath();
       if (code === 5 && ox.roundRect) ox.roundRect(Z * 0.03, Z * 0.03, Z * 0.94, Z * 0.94, Z * 0.16); else ox.arc(Z / 2, Z / 2, Z * 0.49, 0, Math.PI * 2);
       ox.clip(); ox.drawImage(S.canvas, x0, y0, k2, k2, 0, 0, Z, Z);
+      if (badged[code]) { // every example carries a badge: cover that corner with the mirrored lower-left corner
+        ox.save(); ox.beginPath(); ox.rect(Z * 0.62, Z * 0.62, Z * 0.38, Z * 0.38); ox.clip(); ox.translate(Z, 0); ox.scale(-1, 1);
+        ox.drawImage(S.canvas, x0, y0, k2, k2, 0, 0, Z, Z); ox.restore();
+      }
       try { skinData[code] = o.toDataURL("image/png"); added++; } catch (e) {}
     });
     if (added) { save("pt.skins", skinData); applySkins(); }
