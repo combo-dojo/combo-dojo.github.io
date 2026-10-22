@@ -421,6 +421,7 @@ body.m-pool .tabs button[aria-pressed="true"] { background: linear-gradient(#1f4
             <p class="hint" id="roulNote" data-i18n="roulNote"></p>
           </div>
         </details>
+        <div class="set"><span><span data-i18n="learnT"></span><span class="sub" id="learnNote"></span></span><button type="button" class="small ghost" id="btnClearLearn" hidden data-i18n="learnClear"></button></div>
         <div class="set"><label for="useSkins"><span data-i18n="skinT"></span><span class="sub" id="skinNote"></span></label><span class="row"><button type="button" class="small ghost" id="btnClearSkins" hidden data-i18n="clear"></button><span class="switch"><input type="checkbox" id="useSkins" checked><span></span></span></span></div>
         <div class="set"><label for="exp"><span data-i18n="expT"></span><span class="sub" data-i18n="expS"></span></label><span class="switch"><input type="checkbox" id="exp"><span></span></span></div>
         <div class="exp" id="expBox" hidden>
@@ -841,7 +842,7 @@ var Vision = (function () {
     var base0 = best;
     for (var ci = 0; ci < cands.length; ci++) {
       var cc = cands[ci], sameCell = Math.abs(cc.w / cc.cols - base0.w / base0.cols) < base0.w / base0.cols * 0.06;
-      if (cc.w > best.w * 1.1 && (cc.score >= base0.score * 0.9 || (sameCell && cc.score >= base0.score * 0.8)) && extraCellsOk(img, cc, base0)) best = cc;
+      if (cc.w > best.w * 1.1 && (cc.score >= base0.score * 0.9 || (sameCell && cc.score >= base0.score * 0.7)) && extraCellsOk(img, cc, base0)) best = cc;
     }
     if (!best) { var R = (forced || [5, 6])[0], C = (forced || [5, 6])[1]; return { rows: R, cols: C, x: 0, y: img.height - img.width * R / C, w: img.width, score: 0 }; }
     // dimmed boards (操作開始固定): faded orbs have no saturated ring to align on, so find the board as the
@@ -852,16 +853,21 @@ var Vision = (function () {
   // the cells of grid g lying outside grid inner must look like orbs too: their worst row or column of extra cells
   // has to align about as well as the inner board does
   function extraCellsOk(img, g, inner) {
-    var cell = g.w / g.cols, ix0 = inner.x, iy0 = inner.y, ix1 = inner.x + inner.w, iy1 = inner.y + inner.w * inner.rows / inner.cols, n = 0, sum = 0, worst = 1e9, lines = {};
+    // each extra row / column must look like orbs: either it aligns nearly as well as the inner board, or its cells
+    // match known orb looks closely (an iPad's side panel or the HP bar above the board does neither)
+    var cell = g.w / g.cols, ix0 = inner.x, iy0 = inner.y, ix1 = inner.x + inner.w, iy1 = inner.y + inner.w * inner.rows / inner.cols, lines = {}, ok = true;
     for (var r = 0; r < g.rows; r++) for (var c = 0; c < g.cols; c++) {
       var cx = g.x + (c + 0.5) * cell, cy = g.y + (r + 0.5) * cell;
       if (cx > ix0 && cx < ix1 && cy > iy0 && cy < iy1) continue;
-      var sc = alignScore(img, cx - cell / 2, cy - cell / 2, cell, 1, 1), key = cx < ix0 || cx > ix1 ? "c" + c : "r" + r;
-      (lines[key] = lines[key] || []).push(sc); n++; sum += sc;
+      var key = cx < ix0 || cx > ix1 ? "c" + c : "r" + r, L = lines[key] = lines[key] || { a: [], d: [] };
+      L.a.push(alignScore(img, cx - cell / 2, cy - cell / 2, cell, 1, 1));
+      L.d.push(classify(cellFeature(img, g.x, g.y, g.w, g.rows, g.cols, r, c, false), [], false).dist);
     }
-    if (!n) return true;
-    Object.keys(lines).forEach(function (k) { var a = lines[k], m = a.reduce(function (x, y) { return x + y; }, 0) / a.length; if (m < worst) worst = m; });
-    return worst >= inner.score * 0.6;
+    Object.keys(lines).forEach(function (k) {
+      var L = lines[k], m = L.a.reduce(function (x, y) { return x + y; }, 0) / L.a.length, d = L.d.slice().sort(function (x, y) { return x - y; })[L.d.length >> 1];
+      if (!(m >= inner.score * 0.72 || d <= 8)) ok = false;
+    });
+    return ok;
   }
   function rowMean(img, y) {
     var W = img.width, d = img.data, s = 0, n = 0;
@@ -1572,13 +1578,16 @@ Object.assign(I18N.en, { chipStatOn: "♾ Endless: on", chipStatOff: "♾ Endles
   nEndless: "Endless on: right after each move the next round starts with the board left after clearing (empty cells refilled at random), tracking average combos and time. Tap “♾ Endless” again to turn it off." });
 Object.assign(I18N.ja, { chipStatOn: "♾ Endless：オン", chipStatOff: "♾ Endless", endTitle: "Endless", nStatOff: "Endless オフ：動かした後は元の盤面に戻ります。",
   nEndless: "Endless オン：動かすとすぐ、消えた後の盤面で次のラウンドが始まります（空きマスはランダム補充）。平均コンボと平均時間を集計します。「♾ Endless」をもう一度押すとオフ。" });
+Object.assign(I18N.zh, { learnT: "截圖辨識學習", learnS: "已記住 {n} 個你修正過的珠（用嚟改善下次辨識）", learnS0: "喺截圖盤面用「編輯盤面」點一下改錯珠，就會記住", learnClear: "清除學習" });
+Object.assign(I18N.en, { learnT: "Screenshot learning", learnS: "Remembering {n} orbs you corrected (used to read later screenshots)", learnS0: "Tap a misread orb with “Edit board” on a screenshot board and it will be remembered", learnClear: "Clear" });
+Object.assign(I18N.ja, { learnT: "スクショ読み取りの学習", learnS: "修正したドロップを {n} 個記憶中（次の読み取りに使用）", learnS0: "スクショ盤面で「盤面を編集」から間違ったドロップを1回タップで直すと記憶されます", learnClear: "学習をクリア" });
 
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v30", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v31", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
@@ -1718,7 +1727,11 @@ Object.assign(I18N.ja, { chipStatOn: "♾ Endless：オン", chipStatOff: "♾ E
     });
     syncSkinNote(); buildPalette(); buildSettingsGrids();
   }
+  function syncLearnNote() {
+    var n = exemplars.length; $("learnNote").textContent = n ? t("learnS", { n: n }) : t("learnS0"); $("btnClearLearn").hidden = !n;
+  }
   function syncSkinNote() {
+    syncLearnNote();
     var n = Object.keys(skinData).length;
     $("skinNote").textContent = n ? t("skinS", { n: n }) : t("skinS0");
     $("btnClearSkins").hidden = !n;
@@ -3011,7 +3024,13 @@ Object.assign(I18N.ja, { chipStatOn: "♾ Endless：オン", chipStatOff: "♾ E
     S.lastPaint = i;
     var tool = S.paint, b = S.bd;
     if (typeof tool === "number") {
-      if (S.shotFeats[i] && S.src === "srcShot" && base(b.orbs[i]) !== tool) { exemplars.push({ f: S.shotFeats[i].map(function (v) { return Math.round(v * 10) / 10; }), c: tool, user: true }); exemplars = exemplars.slice(-400); save("pt.ex", exemplars); S.shotFeats[i] = null; }
+      // learn from a deliberate fix of a misread orb: a single tap (not a drag across cells, which is just painting),
+      // and the new example replaces older ones that look the same, so one wrong lesson can't pile up
+      if (first && S.shotFeats[i] && S.src === "srcShot" && base(b.orbs[i]) !== tool) {
+        var fz = S.shotFeats[i].map(function (v) { return Math.round(v * 10) / 10; });
+        exemplars = exemplars.filter(function (e) { if (!e.f || e.f.length !== fz.length) return false; var d = 0; for (var q = 0; q < fz.length; q++) d += (e.f[q] - fz[q]) * (e.f[q] - fz[q]); return Math.sqrt(d) > 8; });
+        exemplars.push({ f: fz, c: tool, user: true }); exemplars = exemplars.slice(-300); save("pt.ex", exemplars); S.shotFeats[i] = null; syncLearnNote();
+      }
       b.orbs[i] = tool | (tool !== 11 && b.orbs[i] >= 0 ? b.orbs[i] & (THORN | NOCLR | SDARK | WEAK) : 0); if (S.shotConf) S.shotConf[i] = null;
     } else if (tool === "clear") { b.flags[i] = 0; if (b.orbs[i] >= 0) b.orbs[i] = base(b.orbs[i]); if (b.start === i) b.start = -1; }
     else if (tool === "noclr") { if (first) S.paintOn = !noclr(b.orbs[i]); if (b.orbs[i] >= 0 && base(b.orbs[i]) !== 11) b.orbs[i] = S.paintOn ? b.orbs[i] | NOCLR : b.orbs[i] & ~NOCLR; }
@@ -3389,6 +3408,7 @@ Object.assign(I18N.ja, { chipStatOn: "♾ Endless：オン", chipStatOff: "♾ E
   $("ninja").addEventListener("change", function () { S.bd.ninja = this.checked; boardSettingChanged(); });
   $("roulPeriod").addEventListener("change", function () { S.bd.roulPeriod = Math.max(0.2, Math.min(10, Math.round((+this.value || 1) * 10) / 10)); this.value = S.bd.roulPeriod; boardSettingChanged(); });
   $("useSkins").addEventListener("change", function () { prefs.useSkins = this.checked; savePrefs(); buildPalette(); buildSettingsGrids(); S.dirty = true; });
+  $("btnClearLearn").addEventListener("click", function () { exemplars = []; save("pt.ex", exemplars); syncLearnNote(); if (S.imgData && S.rect) readShot(false); });
   $("btnClearSkins").addEventListener("click", function () { skinData = {}; save("pt.skins", skinData); applySkins(); S.dirty = true; });
   $("exp").addEventListener("change", function () {
     prefs.exp = this.checked;
