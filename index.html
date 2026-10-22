@@ -72,6 +72,8 @@ button.chip.off::after { content: " ✕"; color: var(--gold); font-size: 11px; }
 .res.dmg .v { color: var(--bad); }
 .editbar { display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.3); border: 1px solid #7a5d34; border-radius: 10px; padding: 10px; }
 .editbar .palette { justify-content: center; }
+.dimtoggle { display: inline-flex; align-items: center; gap: 8px; align-self: center; font-size: 13.5px; cursor: pointer; }
+.editbar + .board-wrap { margin-top: -4px; }
 .toprow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; flex: 1 1 auto; min-width: 0; }
 @media (min-width: 940px) { .toprow { flex: 0 1 auto; justify-content: flex-end; } }
 .lang button { font-family: var(--body); font-size: 13px; padding: 6px 11px; }
@@ -256,13 +258,10 @@ body.m-pool .tabs button[aria-pressed="true"] { background: linear-gradient(#1f4
         <div class="chipmenu" id="chipMenu" hidden></div>
       </div>
       <div class="editbar" id="editBar" hidden>
+        <p class="hint" data-i18n="editHint"></p>
         <div class="minirow" id="miniEditRow" hidden><canvas class="shotmini" id="shotMiniEdit" data-i18n-aria="miniAria"></canvas><span class="hint" data-i18n="miniHint"></span></div>
         <div class="palette" id="palette"></div>
-        <div class="row effects">
-          <span class="hint" data-i18n="boardOpts"></span>
-          <label class="row" for="dim"><span class="switch"><input type="checkbox" id="dim"><span></span></span><span><span data-i18n="dimT"></span><span class="sub" data-i18n="dimS"></span></span></label>
-        </div>
-        <p class="hint" data-i18n="editHint"></p>
+        <label class="dimtoggle" for="dim"><span class="switch"><input type="checkbox" id="dim"><span></span></span><span data-i18n="dimT"></span></label>
       </div>
       <div class="board-wrap" id="boardWrap"><canvas id="board" data-i18n-aria="boardAria"></canvas></div>
       <div class="result" id="result">
@@ -1605,7 +1604,7 @@ I18N.ja.editHint = I18N.ja.editHint.replace("読み取りミスを記憶させ�
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v33", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v34", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
