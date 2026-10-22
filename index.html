@@ -170,6 +170,10 @@ input[type=number] { width: 5.2em; font-variant-numeric: tabular-nums; }
 @media (max-width: 520px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .res .v { font-size: 21px; } .tabs button { padding: 7px 9px; font-size: 13px; } .lang button { padding: 5px 7px; font-size: 12px; } .toprow { gap: 6px; } }
 button.super { background: linear-gradient(#5a2414, #3a160c); border-color: #c0542a; color: #ffb07a; font-weight: 700; }
 button.super[aria-pressed="true"] { background: linear-gradient(#ff8a3a, #d0401a); color: #2a0a02; box-shadow: 0 0 14px rgba(255,120,40,0.7); }
+.pattitle { margin: 0 0 10px; font-family: var(--display, inherit); font-size: clamp(26px, 7vw, 38px); line-height: 1.15; color: #f0c25a; text-shadow: 0 2px 0 #5a3a12, 0 0 18px rgba(240,170,60,.35); word-break: break-word; }
+.patcode { display: flex; gap: 6px; flex: 1 1 100%; min-width: 0; order: 9; }
+.patcode[hidden], .pattitle[hidden] { display: none; }
+.patcode input { flex: 1 1 auto; min-width: 0; }
 .patbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .patbar .patnum { min-width: 2.4em; justify-content: center; font-family: var(--latin); font-size: 15px; }
 .patbar .patnum[aria-pressed="true"] { background: linear-gradient(#f39457, #d4602a); color: var(--ember-ink); border-color: #f2a06a; }
@@ -248,10 +252,12 @@ body.m-pool .tabs button[aria-pressed="true"] { background: linear-gradient(#1f4
 
   <main class="grid">
     <section class="stage" aria-labelledby="hudMaxLabel">
+      <h2 class="pattitle" id="patTitleBig" hidden></h2>
       <div class="srcbar" id="srcBar">
         <label class="btn primary" for="file" data-i18n="upload"></label>
         <input type="file" id="file" accept="image/*">
         <button type="button" id="btnRandom" data-i18n="btnRandom"></button>
+        <span class="patcode" id="patCodeTop" hidden><input type="text" class="code" id="patImportTop" data-i18n-ph="patImportPh" data-i18n-aria="patImportPh"><button type="button" class="small" id="btnPatImportTop" data-i18n="load"></button></span>
         <span class="hint" data-i18n="dropShort"></span>
       </div>
       <div class="patbar" id="patBar" hidden data-i18n-aria="patBarAria"></div>
@@ -1612,7 +1618,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v36", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v37", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
@@ -2756,7 +2762,14 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     function pat() { var s = cur(); return s && s.pats[pi] ? s.pats[pi] : null; }
     function persist() { save("pt.sets", sets); save("pt.setIdx", si); }
     function newPattern() { return { name: "", rows: 5, cols: 6, layers: [] }; } // no steps = a random six-colour board
-    function ensureSet() { if (!sets.length) { sets.push({ name: t("patSetDefault"), pats: [newPattern(1)] }); si = 0; pi = 0; persist(); } }
+    var DEF1 = "AwYHBAo_AAAAAAAAAP8FAQEBAQEFAQEFBQUBAQEFAQEBBQEFAQUFBQEFBQUBBQEFBQUFBQEFBQUAAAAAAADi";
+    function defaultSet() { var ps = [{ name: "", rows: 6, cols: 7, layers: [{ t: "board", code: DEF1 }] }]; for (var k = 0; k < 4; k++) ps.push(newPattern()); return { name: "default", pats: ps }; }
+    // one-time: an untouched starter set (no steps anywhere) becomes the new default set
+    if (!load("pt.patDef", 0)) {
+      if (sets.length === 1 && sets[0].pats.every(function (q) { return !q.layers.length; })) { sets[0] = defaultSet(); si = 0; }
+      save("pt.patDef", 1); if (sets.length) save("pt.sets", sets);
+    }
+    function ensureSet() { if (!sets.length) { sets.push(defaultSet()); si = 0; pi = 0; persist(); } }
     function dims(p) { var b = null; p.layers.forEach(function (l) { if (l.t === "board") { var d = E.decode(l.code); if (d) b = d; } }); return b ? [b.rows, b.cols] : [p.rows, p.cols]; }
 
     // ----- generation -----
@@ -2900,6 +2913,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
       // set picker
       var sel = $("patSetSel"); sel.innerHTML = "";
       sets.forEach(function (x, k) { var o = el("option", null, x.name || t("patSetDefault")); o.value = k; if (k === si) o.selected = true; sel.appendChild(o); });
+      $("patTitleBig").textContent = s ? (s.name || "default") : "";
       if (!s) return;
       // number buttons above the board
       s.pats.forEach(function (p, k) {
@@ -2958,6 +2972,9 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     $("btnSetCode").addEventListener("click", function () { var s = cur(); if (s) copyText(pack(s), this, "copiedCode"); });
     function doImport() { var v = $("patImport").value; if (!v.trim()) return; if (loadCode(v)) { $("patImport").value = ""; $("patImportMsg").textContent = t("patFromLink"); } else $("patImportMsg").textContent = t("codeBad"); }
     $("btnPatImport").addEventListener("click", doImport);
+    function doImportTop() { var v = $("patImportTop").value; if (!v.trim()) return; if (loadCode(v)) { $("patImportTop").value = ""; $("patImportMsg").textContent = t("patFromLink"); } else { $("patImportTop").value = ""; $("patImportTop").placeholder = t("codeBad"); } }
+    $("btnPatImportTop").addEventListener("click", doImportTop);
+    $("patImportTop").addEventListener("keydown", function (e) { if (e.key === "Enter") doImportTop(); });
     $("patImport").addEventListener("keydown", function (e) { if (e.key === "Enter") doImport(); });
     return { play: play, render: render, ensure: ensureSet, importSet: importSet, active: function () { return pi; } };
   })();
@@ -3230,7 +3247,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     if (!pool) Pool.reset();
     Array.prototype.forEach.call($("modeTabs").children, function (b) { b.setAttribute("aria-pressed", b.dataset.mode === mode ? "true" : "false"); });
     var editable = mode === "practice" || mode === "pattern";
-    $("srcBar").hidden = !editable; $("btnEdit").hidden = !editable; $("cardPattern").hidden = mode !== "pattern"; $("patBar").hidden = mode !== "pattern";
+    $("srcBar").hidden = !editable; $("btnEdit").hidden = !editable; $("cardPattern").hidden = mode !== "pattern"; $("patBar").hidden = mode !== "pattern"; $("btnRandom").hidden = mode === "pattern"; $("patCodeTop").hidden = mode !== "pattern"; $("patTitleBig").hidden = mode !== "pattern";
     $("cardHell").hidden = mode !== "hell"; $("btnHell").hidden = mode !== "hell"; $("cardRecords").hidden = mode === "hell"; $("cardSource").hidden = !editable || !S.imgData;
     ["btnRetry", "btnReplay", "btnSave", "speedSeg"].forEach(function (id) { $(id).hidden = mode === "hell" || pool; });
     $("cardRecords").hidden = mode === "hell" || pool;
