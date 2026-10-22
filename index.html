@@ -257,7 +257,6 @@ body.m-pool .tabs button[aria-pressed="true"] { background: linear-gradient(#1f4
       </div>
       <div class="editbar" id="editBar" hidden>
         <div class="minirow" id="miniEditRow" hidden><canvas class="shotmini" id="shotMiniEdit" data-i18n-aria="miniAria"></canvas><span class="hint" data-i18n="miniHint"></span></div>
-        <label class="row teach" id="teachRow" for="teach" hidden><span class="switch"><input type="checkbox" id="teach"><span></span></span><span><span data-i18n="teachT"></span><span class="sub" data-i18n="teachS"></span></span></label>
         <div class="palette" id="palette"></div>
         <div class="row effects">
           <span class="hint" data-i18n="boardOpts"></span>
@@ -424,7 +423,6 @@ body.m-pool .tabs button[aria-pressed="true"] { background: linear-gradient(#1f4
             <p class="hint" id="roulNote" data-i18n="roulNote"></p>
           </div>
         </details>
-        <div class="set"><span><span data-i18n="learnT"></span><span class="sub" id="learnNote"></span></span><button type="button" class="small ghost" id="btnClearLearn" hidden data-i18n="learnClear"></button></div>
         <div class="set"><label for="useSkins"><span data-i18n="skinT"></span><span class="sub" id="skinNote"></span></label><span class="row"><button type="button" class="small ghost" id="btnClearSkins" hidden data-i18n="clear"></button><span class="switch"><input type="checkbox" id="useSkins" checked><span></span></span></span></div>
         <div class="set"><label for="exp"><span data-i18n="expT"></span><span class="sub" data-i18n="expS"></span></label><span class="switch"><input type="checkbox" id="exp"><span></span></span></div>
         <div class="exp" id="expBox" hidden>
@@ -441,6 +439,8 @@ body.m-pool .tabs button[aria-pressed="true"] { background: linear-gradient(#1f4
           <div class="set"><span><span data-i18n="seT"></span><span class="sub" id="seNote"></span></span>
             <span class="row"><button type="button" class="small" id="btnSeRec" data-i18n="seRec"></button><button type="button" class="small ghost" id="btnSePlay" data-i18n="sePlay"></button><button type="button" class="small ghost" id="btnSeClear" hidden data-i18n="clear"></button><span class="switch"><input type="checkbox" id="seOn" data-i18n-aria="seT"><span></span></span></span>
           </div>
+          <div class="set"><label for="teach"><span data-i18n="teachT"></span><span class="sub" data-i18n="teachS"></span></label><span class="switch"><input type="checkbox" id="teach"><span></span></span></div>
+          <div class="set"><span><span data-i18n="learnT"></span><span class="sub" id="learnNote"></span></span><button type="button" class="small ghost" id="btnClearLearn" hidden data-i18n="learnClear"></button></div>
           <p class="hint" data-i18n="stoneHint"></p>
         </div>
       </section>
@@ -1593,13 +1593,19 @@ Object.assign(I18N.ja, { teachT: "読み取りを学習させる", teachS: "オ�
 I18N.zh.editHint = (I18N.zh.editHint || "").replace("修正截圖認錯的珠，之後辨識會更準。", "想網頁記住認錯的珠，先開「教網頁認珠」再改。");
 I18N.en.editHint = (I18N.en.editHint || "").replace("Fixing misread orbs makes later screenshots read more accurately.", "To have the reader remember a fix, turn on “Teach the reader” first.");
 I18N.ja.editHint = (I18N.ja.editHint || "").replace("読み取りミスを直すと、次からの読み取りが正確になります。", "読み取りミスを記憶させたい時は「読み取りを学習させる」をオンにしてから直してください。");
+Object.assign(I18N.zh, { teachS: "開啟後，在截圖盤面用「編輯盤面」點一下改正認錯的珠，網頁會記住，下次辨識更準。關閉時編輯只改盤面。", learnS0: "開啟「教網頁認珠」後改正截圖認錯的珠，就會記住" });
+Object.assign(I18N.en, { teachS: "While on, fixing a misread orb on a screenshot board (Edit board, one tap) is remembered for later screenshots. While off, editing only changes the board.", learnS0: "Turn on “Teach the reader”, then fix a misread orb on a screenshot board, and it will be remembered" });
+Object.assign(I18N.ja, { teachS: "オンにすると、スクショ盤面で「盤面を編集」から読み間違いを1回タップで直した内容を記憶し、次の読み取りに使います。オフなら編集は盤面を変えるだけ。", learnS0: "「読み取りを学習させる」をオンにしてスクショの読み間違いを直すと記憶されます" });
+I18N.zh.editHint = I18N.zh.editHint.replace("想網頁記住認錯的珠，先開「教網頁認珠」再改。", "想網頁記住認錯的珠，可以在實驗模式開「教網頁認珠」。");
+I18N.en.editHint = I18N.en.editHint.replace("To have the reader remember a fix, turn on “Teach the reader” first.", "To have the reader remember fixes, turn on “Teach the reader” in experimental mode.");
+I18N.ja.editHint = I18N.ja.editHint.replace("読み取りミスを記憶させたい時は「読み取りを学習させる」をオンにしてから直してください。", "読み取りミスを記憶させたい時は、実験モードの「読み取りを学習させる」をオンにしてください。");
 
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v32", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v33", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
@@ -3039,7 +3045,7 @@ I18N.ja.editHint = (I18N.ja.editHint || "").replace("読み取りミスを直す
       // learn from a deliberate fix of a misread orb: a single tap (not a drag across cells, which is just painting),
       // and the new example replaces older ones that look the same, so one wrong lesson can't pile up
       // learning is opt-in: only while "teach the reader" is switched on, so ordinary board editing never trains it
-      if (S.teach && first && S.shotFeats[i] && S.src === "srcShot" && base(b.orbs[i]) !== tool) {
+      if (prefs.exp && prefs.teach && first && S.shotFeats[i] && S.src === "srcShot" && base(b.orbs[i]) !== tool) {
         var fz = S.shotFeats[i].map(function (v) { return Math.round(v * 10) / 10; });
         exemplars = exemplars.filter(function (e) { if (!e.f || e.f.length !== fz.length) return false; var d = 0; for (var q = 0; q < fz.length; q++) d += (e.f[q] - fz[q]) * (e.f[q] - fz[q]); return Math.sqrt(d) > 8; });
         exemplars.push({ f: fz, c: tool, user: true }); exemplars = exemplars.slice(-300); save("pt.ex", exemplars); S.shotFeats[i] = null; syncLearnNote();
@@ -3135,8 +3141,7 @@ I18N.ja.editHint = (I18N.ja.editHint || "").replace("読み取りミスを直す
   }
   function syncMini() {
     var on = !!(S.imgData && S.rect && S.src === "srcShot" && (S.mode === "practice" || S.mode === "pattern"));
-    $("shotMini").hidden = !on; $("miniEditRow").hidden = !on; $("teachRow").hidden = !on;
-    if (!on) { S.teach = false; $("teach").checked = false; }
+    $("shotMini").hidden = !on; $("miniEditRow").hidden = !on;
     if (on) { drawMini($("shotMini")); drawMini($("shotMiniEdit")); }
   }
   ["shotMini", "shotMiniEdit"].forEach(function (id) { $(id).addEventListener("click", function () { this.classList.toggle("big"); drawMini(this); }); });
@@ -3409,7 +3414,7 @@ I18N.ja.editHint = (I18N.ja.editHint || "").replace("読み取りミスを直す
   function syncSettings() {
     $("timeLimit").value = prefs.timeLimit; $("timeInf").checked = prefs.timeInf; $("timeLimit").disabled = prefs.timeInf;
     $("sky").checked = S.bd.skyfall; $("dim").checked = !!S.bd.dim; $("ninja").checked = !!S.bd.ninja; $("roulPeriod").value = S.bd.roulPeriod;
-    $("useSkins").checked = prefs.useSkins; $("exp").checked = prefs.exp; $("expBox").hidden = !prefs.exp; $("autoNext").checked = prefs.autoNext;
+    $("useSkins").checked = prefs.useSkins; $("teach").checked = !!prefs.teach; $("exp").checked = prefs.exp; $("expBox").hidden = !prefs.exp; $("autoNext").checked = prefs.autoNext;
     Array.prototype.forEach.call($("matchSeg").children, function (b) { b.setAttribute("aria-pressed", +b.dataset.k === matchK() ? "true" : "false"); b.textContent = t("kOrbs", { k: b.dataset.k }); });
     Array.prototype.forEach.call($("speedSeg").children, function (b) { b.setAttribute("aria-pressed", +b.dataset.s === prefs.speed ? "true" : "false"); });
     $("roulNote").hidden = hasRoulette();
@@ -3422,7 +3427,7 @@ I18N.ja.editHint = (I18N.ja.editHint || "").replace("読み取りミスを直す
   $("ninja").addEventListener("change", function () { S.bd.ninja = this.checked; boardSettingChanged(); });
   $("roulPeriod").addEventListener("change", function () { S.bd.roulPeriod = Math.max(0.2, Math.min(10, Math.round((+this.value || 1) * 10) / 10)); this.value = S.bd.roulPeriod; boardSettingChanged(); });
   $("useSkins").addEventListener("change", function () { prefs.useSkins = this.checked; savePrefs(); buildPalette(); buildSettingsGrids(); S.dirty = true; });
-  $("teach").addEventListener("change", function () { S.teach = this.checked; });
+  $("teach").addEventListener("change", function () { prefs.teach = this.checked; savePrefs(); });
   $("btnClearLearn").addEventListener("click", function () { exemplars = []; save("pt.ex", exemplars); syncLearnNote(); if (S.imgData && S.rect) readShot(false); });
   $("btnClearSkins").addEventListener("click", function () { skinData = {}; save("pt.skins", skinData); applySkins(); S.dirty = true; });
   $("exp").addEventListener("change", function () {
