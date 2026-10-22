@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Mono:wght@500&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+JP:wght@700;900&family=Noto+Serif+TC:wght@700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Cinzel:wght@600;700&family=Dela+Gothic+One&family=IBM+Plex+Mono:wght@500&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+JP:wght@700;900&family=Noto+Serif+TC:wght@700;900&display=swap">
 <style>
 /* Layout: a dungeon hall — the board is the lit altar on the left, tool slabs stacked on the right; one column on phones.
    Deliberately a single dark look (torch-lit stone), so no light theme. */
@@ -226,6 +226,179 @@ body.m-pool .stage { border-color: #3c7a4c; }
 body.m-pool #board { border-radius: 14px; box-shadow: 0 10px 28px rgba(0,0,0,0.6); cursor: crosshair; }
 body.m-pool .tabs button[aria-pressed="true"] { background: linear-gradient(#1f4a2c, #15361f); color: #9fe0a8; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<style>
+/* ===== NEON ARCADE theme  =====
+   Night-time brick wall lit by neon signs. Every mode shares the look; only the neon colour changes:
+   practice = orange, pattern = teal, endless = blue, hell = red, pool = green. */
+:root {
+  --neon: #ff8a3a; --neon-ink: #2a0c02; --neon-soft: rgba(255, 138, 58, .42);
+  --ink: #f6f1ea; --ink-2: #cfc4ba; --dim: #a99d93;
+  --panel: rgba(18, 12, 12, .78); --field: rgba(8, 5, 5, .72); --hair: rgba(255,255,255,.14);
+  --parch: var(--ink); --gold: var(--neon); --ember: var(--neon); --ember-ink: var(--neon-ink);
+  --good: #7cf0b0; --bad: #ff7a8a; --mortar: rgba(255,255,255,.14); --edge: var(--neon);
+  --brick: #3a1a10; --brick-2: #200b06;
+  --display: "Dela Gothic One", "Noto Sans TC", "Noto Sans JP", sans-serif;
+  --latin: "Chakra Petch", "Dela Gothic One", sans-serif;
+  --body: "Noto Sans TC", system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --mono: "Chakra Petch", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+:root:lang(ja) { --display: "Dela Gothic One", "Noto Sans JP", sans-serif; --body: "Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", sans-serif; }
+:root:lang(en) { --display: "Dela Gothic One", "Chakra Petch", sans-serif; }
+body.m-pattern { --neon: #5ef2d6; --neon-ink: #04241e; --neon-soft: rgba(94, 242, 214, .35); --brick: #22201d; --brick-2: #131211; }
+body.m-endless { --neon: #5aa8ff; --neon-ink: #061630; --neon-soft: rgba(90, 168, 255, .38); }
+body.m-hell    { --neon: #ff3b3b; --neon-ink: #2a0303; --neon-soft: rgba(255, 50, 50, .45); --brick: #3a0e0c; --brick-2: #1c0504; }
+body.m-pool    { --neon: #7dff8a; --neon-ink: #06300c; --neon-soft: rgba(125, 255, 138, .35); }
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse 70% 32% at 50% 0%, var(--neon-soft), transparent 72%),
+    radial-gradient(ellipse 120% 60% at 50% 120%, rgba(0,0,0,.65), transparent 70%),
+    repeating-linear-gradient(0deg, transparent 0 36px, rgba(0,0,0,.5) 36px 39px),
+    repeating-linear-gradient(90deg, transparent 0 78px, rgba(0,0,0,.38) 78px 81px),
+    linear-gradient(var(--brick), var(--brick-2));
+  background-attachment: fixed;
+}
+
+/* ---------- header ---------- */
+h1 {
+  font-family: var(--display); font-weight: 400; letter-spacing: .02em; color: #fffaf4;
+  font-size: clamp(34px, 8.5vw, 58px);
+  text-shadow: 0 0 4px #fff, 0 0 10px var(--neon), 0 0 24px var(--neon), 0 0 48px var(--neon-soft);
+}
+.credit { color: var(--ink-2); font-family: var(--latin); font-weight: 600; }
+.ver, .tag { color: var(--ink-2); }
+
+.tabs, .seg { border: 2px solid var(--neon); border-radius: 14px; background: var(--field); box-shadow: 0 0 10px var(--neon-soft), inset 0 0 8px var(--neon-soft); overflow: hidden; }
+.tabs button, .seg button { background: transparent; color: var(--ink); font-family: var(--display); font-weight: 400; box-shadow: none; border-radius: 0; }
+.seg button { font-family: var(--body); font-weight: 700; }
+.lang button { font-family: var(--latin); font-weight: 700; }
+.tabs button + button, .seg button + button { border-left: 1px solid var(--neon-soft); }
+.tabs button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--neon); color: var(--neon-ink); text-shadow: none; box-shadow: 0 0 16px var(--neon); }
+
+/* ---------- panels: lit sign boxes ---------- */
+.slab, .stage {
+  background: var(--panel); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  border: 2px solid var(--neon); border-radius: 22px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 0 16px var(--neon-soft), inset 0 0 22px var(--neon-soft);
+}
+.stage { padding: 16px; }
+.stage::before { content: ""; position: absolute; left: 22px; right: 22px; top: -2px; height: 5px; border-radius: 0 0 6px 6px; background: var(--neon); box-shadow: 0 0 14px var(--neon); }
+/* section titles: a neon word with a tube running off to the right */
+.slab h2 { font-family: var(--display); font-weight: 400; font-size: 17px; letter-spacing: .04em; color: #fffaf4; text-shadow: 0 0 6px var(--neon), 0 0 16px var(--neon-soft); }
+.slab h2 small { color: var(--dim); text-shadow: none; }
+
+/* ---------- controls ---------- */
+button, .btn {
+  color: var(--ink); background: var(--field); border: 1.5px solid var(--neon); border-radius: 12px; font-weight: 600;
+  box-shadow: 0 0 8px var(--neon-soft); transition: box-shadow .15s, background .15s, transform .08s;
+}
+button:hover, .btn:hover { border-color: var(--neon); box-shadow: 0 0 14px var(--neon); background: rgba(255,255,255,.04); }
+button:active, .btn:active { transform: translateY(1px); box-shadow: 0 0 4px var(--neon-soft); }
+button:disabled { opacity: .38; box-shadow: none; }
+button:focus-visible, .btn:focus-within, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.primary { background: var(--neon); color: var(--neon-ink); border-color: var(--neon); font-family: var(--display); font-weight: 400; letter-spacing: .02em; box-shadow: 0 0 18px var(--neon), inset 0 -3px 0 rgba(0,0,0,.18); }
+.primary:hover { background: var(--neon); box-shadow: 0 0 26px var(--neon); }
+.small { border-radius: 10px; }
+.ghost { background: transparent; border-color: rgba(255,255,255,.28); box-shadow: none; }
+.ghost:hover { border-color: var(--neon); box-shadow: 0 0 10px var(--neon-soft); }
+button.super { background: var(--field); border-color: #ffd34a; color: #ffd34a; box-shadow: 0 0 10px rgba(255,211,74,.4); }
+button.super[aria-pressed="true"] { background: #ffd34a; color: #2a1c00; box-shadow: 0 0 22px #ffb020; }
+
+input[type=number], input[type=text], select { color: var(--ink); background: var(--field); border: 1.5px solid rgba(255,255,255,.28); border-radius: 10px; }
+input[type=number]:focus, input[type=text]:focus, select:focus { border-color: var(--neon); box-shadow: 0 0 10px var(--neon-soft); }
+input::placeholder { color: #7f756e; }
+input[type=range], input[type=checkbox] { accent-color: var(--neon); }
+
+.chip { border: 1.5px solid var(--neon); background: var(--field); color: var(--ink); font-weight: 600; box-shadow: 0 0 8px var(--neon-soft); }
+.chip.on { background: var(--neon); color: var(--neon-ink); }
+button.chip::after { color: var(--ink-2); }
+button.chip.on::after { color: var(--neon-ink); }
+button.chip.off::after { color: var(--bad); }
+.chipmenu { background: rgba(14,9,9,.96); border: 2px solid var(--neon); border-radius: 14px; box-shadow: 0 0 24px var(--neon-soft), 0 14px 30px rgba(0,0,0,.6); }
+.chipmenu button[aria-pressed="true"] { background: var(--neon); color: var(--neon-ink); }
+
+.switch span { background: var(--field); border: 1.5px solid rgba(255,255,255,.3); }
+.switch span::after { background: var(--dim); }
+.switch input:checked + span { background: var(--neon-soft); border-color: var(--neon); box-shadow: 0 0 10px var(--neon-soft); }
+.switch input:checked + span::after { background: var(--neon); box-shadow: 0 0 8px var(--neon); }
+
+details { border-top: 1px solid var(--hair); }
+summary { color: var(--ink); font-weight: 700; }
+summary::before { color: var(--neon); text-shadow: 0 0 6px var(--neon); }
+
+/* ---------- board ---------- */
+.hud .max { font-family: var(--display); font-weight: 400; color: var(--ink); }
+.hud .max b { font-family: var(--latin); font-weight: 700; font-size: 36px; color: #fffaf4; text-shadow: 0 0 4px #fff, 0 0 12px var(--neon), 0 0 26px var(--neon); }
+#board { border-radius: 16px; box-shadow: 0 0 0 2px #050304, 0 0 0 5px var(--neon), 0 0 30px 6px var(--neon-soft), 0 12px 30px rgba(0,0,0,.7); }
+body.m-pattern #board, body.m-endless #board, body.m-hell #board { box-shadow: 0 0 0 2px #050304, 0 0 0 5px var(--neon), 0 0 34px 8px var(--neon-soft), 0 12px 30px rgba(0,0,0,.7); }
+.board-wrap { padding: 8px 0 10px; }
+
+.res { background: var(--field); border: 1.5px solid var(--neon); border-radius: 14px; box-shadow: 0 0 10px var(--neon-soft), inset 0 0 10px rgba(0,0,0,.5); }
+.res .k { color: var(--ink-2); font-weight: 700; font-size: 11.5px; letter-spacing: .08em; }
+.res .v { font-family: var(--latin); font-weight: 700; color: #fffaf4; }
+.res .v small { color: var(--ink-2); }
+.res.hit .v { color: var(--good); text-shadow: 0 0 10px rgba(124,240,176,.6); }
+.res.dmg .v { color: var(--bad); }
+.breakdown .bk { background: var(--field); border: 1.5px solid rgba(255,255,255,.22); }
+.breakdown .bk:not(.zero) { border-color: var(--neon); box-shadow: 0 0 8px var(--neon-soft); }
+.breakdown .bk b { color: var(--ink); font-weight: 700; }
+.note { color: var(--ink-2); }
+.note .warn { color: var(--bad); font-weight: 700; }
+.hint { color: var(--dim); }
+
+.editbar { background: rgba(0,0,0,.45); border: 1.5px dashed var(--neon); border-radius: 16px; }
+.pal { background: var(--field); }
+.pal[aria-pressed="true"] { background: var(--neon-soft); border-color: var(--neon); box-shadow: 0 0 12px var(--neon); }
+.order button[aria-pressed="true"] { border-color: var(--neon); box-shadow: 0 0 10px var(--neon-soft); }
+.drop { border: 1.5px dashed var(--neon); background: rgba(0,0,0,.35); }
+.drop.over { background: var(--neon-soft); }
+.shotmini, .recs .thumb, .player .thumb { border: 1.5px solid var(--neon); border-radius: 8px; box-shadow: 0 0 8px var(--neon-soft); }
+.shot-wrap { border: 1.5px solid var(--neon); border-radius: 12px; }
+
+.recs li { background: var(--field); border: 1.5px solid rgba(255,255,255,.18); border-radius: 14px; }
+.recs .rank { font-family: var(--latin); color: var(--neon); text-shadow: 0 0 8px var(--neon); }
+.recs .what b { font-family: var(--latin); }
+.recs .empty { background: transparent; border: 1.5px dashed rgba(255,255,255,.22); }
+
+/* ---------- pattern ---------- */
+/* the set name is a neon sign with tubes running off both sides, like a section heading on a club wall */
+.pattitle {
+  display: flex; align-items: center; gap: 14px; margin: 2px 0 12px; text-align: center;
+  font-family: var(--display); font-weight: 400; font-size: clamp(32px, 9vw, 50px); letter-spacing: .03em; line-height: 1.1;
+  color: #f4fffc; text-shadow: 0 0 4px #fff, 0 0 12px var(--neon), 0 0 28px var(--neon), 0 0 54px var(--neon-soft);
+}
+.pattitle::before, .pattitle::after { content: ""; flex: 1 1 24px; min-width: 18px; height: 4px; border-radius: 4px; background: var(--neon); box-shadow: 0 0 8px var(--neon), 0 0 18px var(--neon-soft); }
+.pattitle[hidden] { display: none; }
+.patbar .patnum { font-family: var(--latin); font-weight: 700; font-size: 17px; min-width: 2.6em; }
+.patbar .patnum[aria-pressed="true"] { background: var(--neon); color: var(--neon-ink); box-shadow: 0 0 16px var(--neon); }
+#patList li.on { border-color: var(--neon); background: var(--neon-soft); box-shadow: 0 0 12px var(--neon-soft); }
+#patList li.on .rank { color: #fff; }
+#patList li.pick:hover { border-color: var(--neon); }
+.pateditor { background: rgba(0,0,0,.4); border: 1.5px solid var(--neon); border-radius: 16px; box-shadow: 0 0 14px var(--neon-soft), inset 0 0 14px var(--neon-soft); }
+.pateditor h3 { font-family: var(--display); font-weight: 400; color: #fff; text-shadow: 0 0 8px var(--neon); }
+.player { background: var(--field); border: 1.5px solid rgba(255,255,255,.2); border-radius: 14px; }
+.shapegrid .sc { background: rgba(255,255,255,.06); }
+.shapegrid .sc[aria-pressed="true"] { border-color: var(--neon); background: var(--neon-soft); }
+
+.exp { border: 1.5px dashed #ffd34a; background: rgba(255,211,74,.06); }
+.exp .unlocked { color: var(--good); }
+.teach { border: 1.5px dashed var(--neon); }
+
+footer { color: var(--ink-2); }
+footer b { color: var(--ink); font-weight: 700; }
+footer a { color: var(--neon); }
+footer details.rules summary { color: var(--ink-2); }
+.credit-foot { border-top: 1px solid var(--hair); }
+
+/* the old per-mode overrides from the base sheet are folded into --neon above */
+body.m-endless .stage, body.m-hell .stage, body.m-pool .stage { background: var(--panel); border-color: var(--neon); }
+body.m-hell .slab { background: var(--panel); border-color: var(--neon); }
+body.m-endless .tabs button[aria-pressed="true"], body.m-hell .tabs button[aria-pressed="true"], body.m-pool .tabs button[aria-pressed="true"] { background: var(--neon); color: var(--neon-ink); }
+body.m-hell h1 { color: #fffaf4; text-shadow: 0 0 4px #fff, 0 0 10px var(--neon), 0 0 24px var(--neon), 0 0 48px var(--neon-soft); }
+body.m-pool #board { box-shadow: 0 0 0 5px var(--neon), 0 0 30px 6px var(--neon-soft); }
 </style>
 
 <div class="wrap">
@@ -837,7 +1010,26 @@ var Vision = (function () {
     }
     return b;
   }
+  // landscape screenshots (tablets / phones held sideways): the board fills the right part of the screen, so search
+  // a few right-hand crops as if they were portrait shots and shift the best fit back
+  function cropRight(img, x0, x1) {
+    x0 = Math.floor(x0); x1 = Math.floor(x1); var W = img.width, H = img.height, w = x1 - x0, d = new Uint8ClampedArray(w * H * 4);
+    for (var y = 0; y < H; y++) d.set(img.data.subarray((y * W + x0) * 4, (y * W + x1) * 4), y * w * 4);
+    return { data: d, width: w, height: H, _crop: true };
+  }
   function detect(img, forced) {
+    if (!img._crop && img.width > img.height * 1.3) {
+      var bestL = detect({ data: img.data, width: img.width, height: img.height, _crop: true }, forced), big = function (q) { return q.rows * q.cols; };
+      [0.4, 0.5].forEach(function (f) { [1, 0.975].forEach(function (e) {
+        var x0 = Math.floor(img.width * f), sub = cropRight(img, x0, img.width * e);
+        (forced ? [forced] : SIZES).forEach(function (sz) {
+          var d = detect(sub, sz); d.x += x0;
+          // a smaller grid can fit inside the real board almost as well: within 10%, the bigger grid wins
+          if (big(d) > big(bestL) ? d.score >= bestL.score * 0.9 : big(d) < big(bestL) ? d.score > bestL.score / 0.9 : d.score > bestL.score) bestL = d;
+        });
+      }); });
+      return bestL;
+    }
     var sizes = forced ? [forced] : SIZES, best = null, cands = [];
     for (var si = 0; si < sizes.length; si++) {
       var c = coarse(img, sizes[si][0], sizes[si][1]);
@@ -1085,7 +1277,7 @@ var Vision = (function () {
     for (var q = 0; q < 4; q++) {
       var g = 0, n = 0;
       for (var k = 0; k < 30; k++) {
-        var t = (0.12 + 0.54 * k / 29) * cell * S;
+        var t = (0.12 + 0.36 * k / 29) * cell * S; // inner part only: with a slightly offset frame, the grey board behind round orbs reaches the outer ends
         for (var pp = -2; pp <= 2; pp++) {
           var o = pp * 0.015 * cell, p = px(img, cx + sg[q][0] * t + o, cy + sg[q][1] * t - o * sg[q][0] * sg[q][1]);
           var mx = Math.max(p[0], p[1], p[2]), mn = Math.min(p[0], p[1], p[2]);
@@ -1097,7 +1289,8 @@ var Vision = (function () {
     }
     // the barbed lines run through all four corners; a glossy highlight only lights one or two
     qs.sort(function (a, b) { return a - b; });
-    return (qs[0] + qs[1] + qs[2]) / 3;
+    // (a slightly high/low frame puts the board behind round orbs on two neighbouring ends, so use the two quietest)
+    return (qs[0] + qs[1]) / 2;
   }
   var THORN = 0.1;
 
@@ -1437,7 +1630,7 @@ Object.assign(I18N.zh, {
   nFixedStart: "操作開始固定：只可以由十字標記嗰粒珠開始轉。", chipStart: "開始固定", nStartFound: "操作開始固定（第 {r} 行第 {c} 列）", nNoclrN: "{n} 粒消去不可",
   nFaded: "這張截圖的珠淡化得太厲害，大部分顏色只是估計（黃色虛線圈），請用「編輯盤面」核對。",
   randSum: "隨機盤面的珠", randHint: "選擇隨機盤面會出現的珠（盤面練習、無限隨機、地獄模式都適用）。至少選一種。", randStoneHint: "石頭珠需要開啟實驗模式。",
-  modePool: "桌球", poolTitle: "桌球模式", poolRules: "搞笑用。盤面的珠縮小排在球枱中下方。按住白波向後拉再放手，拉得越後越大力。珠入袋 1 分；兩粒同色珠相撞會一起消除，得 3 分。白波入袋會放回原位。",
+  modePool: "🎱", poolTitle: "🎱 模式", poolRules: "搞笑用。盤面的珠縮小排在球枱中下方。按住白波向後拉再放手，拉得越後越大力。珠入袋 1 分；兩粒同色珠相撞會一起消除，得 3 分。白波入袋會放回原位。",
   poolScoreK: "分數", poolShotsK: "桿數", poolLeftK: "剩下", poolIntro: "拉後白波再放手來擊球。", poolPocket: "入袋 +1", poolPop: "相撞消除 +3", poolScratch: "白波入袋，放回原位。",
   poolDone: "全部清檯！{s} 分，用了 {n} 桿。", poolRack: "↺ 重新擺珠", poolUse: "用目前盤面擺珠", poolHint: "球枱用的是「盤面練習」目前的盤面；切換回盤面練習可以換盤面。",
   modeAria: "模式"
@@ -1618,7 +1811,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v37", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v38", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
@@ -1708,7 +1901,56 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     g.moveTo(x + rr, y); g.lineTo(x + w - rr, y); g.quadraticCurveTo(x + w, y, x + w, y + rr); g.lineTo(x + w, y + h - rr); g.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
     g.lineTo(x + rr, y + h); g.quadraticCurveTo(x, y + h, x, y + h - rr); g.lineTo(x, y + rr); g.quadraticCurveTo(x, y, x + rr, y); g.closePath();
   }
+  // neon arcade orbs: glassy body, lit rim, glowing white symbol, coloured halo
+  var NEON = [
+    ["#ffb199", "#ff4d2e", "#6a0d02", "#ff6a3a"], ["#a8dcff", "#1f8fff", "#04245a", "#39a8ff"], ["#a6f7b0", "#16c454", "#033d16", "#3cff7a"],
+    ["#fff3b0", "#ffc21a", "#6e4400", "#ffd84a"], ["#e3c0ff", "#9a3dff", "#22054f", "#b874ff"], ["#ffc6df", "#ff4f9a", "#5e062c", "#ff74b4"],
+    ["#dfe4ee", "#6b778c", "#181d28", "#aab6ca"], ["#e6b8ff", "#8a2fc0", "#200630", "#b8ff6a"], ["#c08fe0", "#3e1856", "#0b0311", "#ff5ad8"],
+    ["#9aa2ae", "#2b3038", "#060708", "#ff8a3a"], ["#c6c6d0", "#5a5a64", "#18181c", "#c6c6d0"]
+  ];
+  function orbSpriteNeon(code, px) {
+    var key = "n" + code + "_" + px;
+    if (orbCache[key]) return orbCache[key];
+    var cv = document.createElement("canvas"); cv.width = cv.height = px;
+    var g = cv.getContext("2d"), c = px / 2, r = px * 0.44, cl = NEON[code] || NEON[10], sq = code === 5;
+    g.translate(c, c);
+    function body() { g.beginPath(); if (sq) roundRectPath(g, -r * 0.92, -r * 0.92, r * 1.84, r * 1.84, r * 0.34); else g.arc(0, 0, r, 0, Math.PI * 2); }
+    // halo
+    g.save(); body(); g.shadowColor = cl[3]; g.shadowBlur = px * 0.09; g.fillStyle = cl[2]; g.fill(); g.restore();
+    // glass body: light from the top, deep colour at the rim
+    var gr = g.createRadialGradient(-r * 0.25, -r * 0.45, r * 0.05, 0, 0, r * (sq ? 1.35 : 1.05));
+    gr.addColorStop(0, cl[0]); gr.addColorStop(0.42, cl[1]); gr.addColorStop(1, cl[2]);
+    body(); g.fillStyle = gr; g.fill();
+    // a soft inner shadow at the bottom so it reads as a sphere / pillow
+    var sh = g.createLinearGradient(0, -r, 0, r); sh.addColorStop(0.55, "rgba(0,0,0,0)"); sh.addColorStop(1, "rgba(0,0,0,0.35)");
+    body(); g.fillStyle = sh; g.fill();
+    // lit neon rim
+    g.save(); g.beginPath(); if (sq) roundRectPath(g, -r * 0.86, -r * 0.86, r * 1.72, r * 1.72, r * 0.28); else g.arc(0, 0, r * 0.9, 0, Math.PI * 2);
+    g.lineWidth = Math.max(1, px * 0.032); g.strokeStyle = cl[0]; g.shadowColor = cl[3]; g.shadowBlur = px * 0.05; g.globalAlpha = 0.85; g.stroke(); g.restore();
+    body(); g.lineWidth = Math.max(1, px * 0.02); g.strokeStyle = "rgba(0,0,0,0.65)"; g.stroke();
+    var u = r * 0.74;
+    if (code === 10) { g.fillStyle = "#fff"; g.font = "700 " + Math.round(r) + "px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("?", 0, r * 0.05); }
+    else if (code === 9) {
+      g.strokeStyle = "#ffd9a0"; g.lineWidth = px * 0.05; g.lineCap = "round"; glyph(g, 9, u * 1.1); g.stroke();
+      g.save(); g.fillStyle = "#fff3c4"; g.shadowColor = cl[3]; g.shadowBlur = px * 0.08; g.beginPath(); g.arc(0.42 * u, -0.8 * u, px * 0.05, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#ffb070"; g.font = "700 " + Math.round(r * 0.7) + "px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("!", 0, r * 0.12); g.restore();
+    } else {
+      // the symbol is a lit tube: white core with a coloured glow
+      g.save(); glyph(g, code, u);
+      g.fillStyle = code === 7 ? "#dcff9a" : code === 8 ? "#ffb2ee" : "#ffffff";
+      g.shadowColor = cl[3]; g.shadowBlur = px * 0.07; g.fill("nonzero"); g.shadowBlur = px * 0.025; g.fill("nonzero"); g.restore();
+      if (code === 2) { g.beginPath(); g.moveTo(-0.42 * u, 0.42 * u); g.quadraticCurveTo(0.04 * u, 0.02 * u, 0.42 * u, -0.44 * u); g.strokeStyle = cl[1]; g.lineWidth = px * 0.028; g.lineCap = "round"; g.stroke(); }
+      if (code === 8) { g.save(); g.beginPath(); g.arc(0, 0, r * 0.8, 0, Math.PI * 2); g.strokeStyle = "rgba(255,90,216,0.85)"; g.shadowColor = "#ff5ad8"; g.shadowBlur = px * 0.06; g.lineWidth = px * 0.03; g.stroke(); g.restore(); }
+    }
+    // specular: a crisp arc + a dot, instead of a soft blob
+    g.save(); g.lineCap = "round"; g.strokeStyle = "rgba(255,255,255,0.75)"; g.lineWidth = Math.max(1, px * 0.035);
+    g.beginPath(); if (sq) { g.moveTo(-r * 0.6, -r * 0.2); g.quadraticCurveTo(-r * 0.62, -r * 0.62, -r * 0.2, -r * 0.64); } else g.arc(0, 0, r * 0.7, Math.PI * 1.08, Math.PI * 1.38); g.stroke();
+    g.fillStyle = "rgba(255,255,255,0.85)"; g.beginPath(); g.arc(sq ? -r * 0.02 : -r * 0.06, -r * (sq ? 0.66 : 0.72), px * 0.022, 0, Math.PI * 2); g.fill(); g.restore();
+    orbCache[key] = cv;
+    return cv;
+  }
   function orbSprite(code, px) {
+    if (code !== 11) return orbSpriteNeon(code, px);
     var key = code + "_" + px;
     if (orbCache[key]) return orbCache[key];
     var cv = document.createElement("canvas"); cv.width = cv.height = px;
@@ -2009,7 +2251,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   }
   function center(i) { return [(i % S.bd.cols + 0.5) * geo.cell, (Math.floor(i / S.bd.cols) + 0.5) * geo.cell]; }
   function bigText(txt, x, y, size, fill, align, font) {
-    ctx.save(); ctx.font = "700 " + Math.round(size) + "px " + (font || "Cinzel, 'Noto Serif TC', serif"); ctx.textAlign = align || "center"; ctx.textBaseline = "middle";
+    ctx.save(); ctx.font = "700 " + Math.round(size) + "px " + (font || "'Chakra Petch', 'Dela Gothic One', sans-serif"); ctx.textAlign = align || "center"; ctx.textBaseline = "middle";
     ctx.lineWidth = Math.max(3, size * 0.16); ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.strokeText(txt, x, y); ctx.fillStyle = fill; ctx.fillText(txt, x, y); ctx.restore();
   }
   var UIFONT = "'Noto Sans TC', 'Noto Sans JP', system-ui, sans-serif";
@@ -2019,7 +2261,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     var c = geo.cell, R = S.bd.rows, C = S.bd.cols;
     for (var r = 0; r < R; r++) for (var col = 0; col < C; col++) {
       var i = r * C + col;
-      ctx.fillStyle = (r + col) % 2 ? "#33281f" : "#281f18"; ctx.fillRect(col * c, r * c, c + 0.5, c + 0.5);
+      ctx.fillStyle = (r + col) % 2 ? "#1d1a20" : "#141217"; ctx.fillRect(col * c, r * c, c + 0.5, c + 0.5);
       if (hasFlag(i, F_ROUL)) drawRouletteTile(ctx, col * c, r * c, c);
     }
   }
@@ -2443,7 +2685,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     var g = cv2.getContext("2d"); g.scale(dpr, dpr);
     for (var i = 0; i < R * C; i++) {
       var r = Math.floor(i / C), c = i % C;
-      g.fillStyle = (r + c) % 2 ? "#33281f" : "#281f18"; g.fillRect(c * cell, r * cell, cell + 0.5, cell + 0.5);
+      g.fillStyle = (r + c) % 2 ? "#1d1a20" : "#141217"; g.fillRect(c * cell, r * cell, cell + 0.5, cell + 0.5);
       if (after[i] >= 0) drawOrb(g, (c + 0.5) * cell, (r + 0.5) * cell, cell * 0.92, after[i]);
     }
     var p = rec.p || [];
