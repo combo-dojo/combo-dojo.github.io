@@ -96,6 +96,8 @@ button.chip.off::after { content: " ✕"; color: var(--gold); font-size: 11px; }
 .noterow .note { flex: 1 1 14em; }
 .shotmini { display: block; width: 120px; border-radius: 6px; border: 1px solid #7a5d34; cursor: zoom-in; box-shadow: 0 4px 12px rgba(0,0,0,0.5); flex: none; }
 .shotmini.big { width: 100%; cursor: zoom-out; }
+.teach { gap: 8px; font-size: 13.5px; cursor: pointer; padding: 6px 8px; border: 1px dashed #4fc3c8; border-radius: 9px; }
+.teach .sub { display: block; font-size: 11.5px; color: var(--dim); }
 .minirow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .minirow .shotmini { width: 150px; }
 .minirow .shotmini.big { width: 100%; }
@@ -255,6 +257,7 @@ body.m-pool .tabs button[aria-pressed="true"] { background: linear-gradient(#1f4
       </div>
       <div class="editbar" id="editBar" hidden>
         <div class="minirow" id="miniEditRow" hidden><canvas class="shotmini" id="shotMiniEdit" data-i18n-aria="miniAria"></canvas><span class="hint" data-i18n="miniHint"></span></div>
+        <label class="row teach" id="teachRow" for="teach" hidden><span class="switch"><input type="checkbox" id="teach"><span></span></span><span><span data-i18n="teachT"></span><span class="sub" data-i18n="teachS"></span></span></label>
         <div class="palette" id="palette"></div>
         <div class="row effects">
           <span class="hint" data-i18n="boardOpts"></span>
@@ -1581,13 +1584,22 @@ Object.assign(I18N.ja, { chipStatOn: "♾ Endless：オン", chipStatOff: "♾ E
 Object.assign(I18N.zh, { learnT: "截圖辨識學習", learnS: "已記住 {n} 個你修正過的珠（用嚟改善下次辨識）", learnS0: "喺截圖盤面用「編輯盤面」點一下改錯珠，就會記住", learnClear: "清除學習" });
 Object.assign(I18N.en, { learnT: "Screenshot learning", learnS: "Remembering {n} orbs you corrected (used to read later screenshots)", learnS0: "Tap a misread orb with “Edit board” on a screenshot board and it will be remembered", learnClear: "Clear" });
 Object.assign(I18N.ja, { learnT: "スクショ読み取りの学習", learnS: "修正したドロップを {n} 個記憶中（次の読み取りに使用）", learnS0: "スクショ盤面で「盤面を編集」から間違ったドロップを1回タップで直すと記憶されます", learnClear: "学習をクリア" });
+Object.assign(I18N.zh, { teachT: "教網頁認珠", teachS: "開啟時點一下改正截圖認錯的珠，網頁會記住，下次辨識更準；關閉時編輯只改盤面，不會學習。",
+  learnS0: "編輯截圖盤面時開啟「教網頁認珠」再改正認錯的珠，就會記住" });
+Object.assign(I18N.en, { teachT: "Teach the reader", teachS: "While on, tapping a misread orb to fix it is remembered for later screenshots; while off, editing only changes the board.",
+  learnS0: "Turn on “Teach the reader” while editing a screenshot board, then fix a misread orb, and it will be remembered" });
+Object.assign(I18N.ja, { teachT: "読み取りを学習させる", teachS: "オンの間、読み間違えたドロップをタップで直すと記憶して次の読み取りに使います。オフなら編集は盤面を変えるだけで学習しません。",
+  learnS0: "スクショ盤面の編集中に「読み取りを学習させる」をオンにして直すと記憶されます" });
+I18N.zh.editHint = (I18N.zh.editHint || "").replace("修正截圖認錯的珠，之後辨識會更準。", "想網頁記住認錯的珠，先開「教網頁認珠」再改。");
+I18N.en.editHint = (I18N.en.editHint || "").replace("Fixing misread orbs makes later screenshots read more accurately.", "To have the reader remember a fix, turn on “Teach the reader” first.");
+I18N.ja.editHint = (I18N.ja.editHint || "").replace("読み取りミスを直すと、次からの読み取りが正確になります。", "読み取りミスを記憶させたい時は「読み取りを学習させる」をオンにしてから直してください。");
 
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v31", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v32", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
@@ -3026,7 +3038,8 @@ Object.assign(I18N.ja, { learnT: "スクショ読み取りの学習", learnS: "�
     if (typeof tool === "number") {
       // learn from a deliberate fix of a misread orb: a single tap (not a drag across cells, which is just painting),
       // and the new example replaces older ones that look the same, so one wrong lesson can't pile up
-      if (first && S.shotFeats[i] && S.src === "srcShot" && base(b.orbs[i]) !== tool) {
+      // learning is opt-in: only while "teach the reader" is switched on, so ordinary board editing never trains it
+      if (S.teach && first && S.shotFeats[i] && S.src === "srcShot" && base(b.orbs[i]) !== tool) {
         var fz = S.shotFeats[i].map(function (v) { return Math.round(v * 10) / 10; });
         exemplars = exemplars.filter(function (e) { if (!e.f || e.f.length !== fz.length) return false; var d = 0; for (var q = 0; q < fz.length; q++) d += (e.f[q] - fz[q]) * (e.f[q] - fz[q]); return Math.sqrt(d) > 8; });
         exemplars.push({ f: fz, c: tool, user: true }); exemplars = exemplars.slice(-300); save("pt.ex", exemplars); S.shotFeats[i] = null; syncLearnNote();
@@ -3122,7 +3135,8 @@ Object.assign(I18N.ja, { learnT: "スクショ読み取りの学習", learnS: "�
   }
   function syncMini() {
     var on = !!(S.imgData && S.rect && S.src === "srcShot" && (S.mode === "practice" || S.mode === "pattern"));
-    $("shotMini").hidden = !on; $("miniEditRow").hidden = !on;
+    $("shotMini").hidden = !on; $("miniEditRow").hidden = !on; $("teachRow").hidden = !on;
+    if (!on) { S.teach = false; $("teach").checked = false; }
     if (on) { drawMini($("shotMini")); drawMini($("shotMiniEdit")); }
   }
   ["shotMini", "shotMiniEdit"].forEach(function (id) { $(id).addEventListener("click", function () { this.classList.toggle("big"); drawMini(this); }); });
@@ -3408,6 +3422,7 @@ Object.assign(I18N.ja, { learnT: "スクショ読み取りの学習", learnS: "�
   $("ninja").addEventListener("change", function () { S.bd.ninja = this.checked; boardSettingChanged(); });
   $("roulPeriod").addEventListener("change", function () { S.bd.roulPeriod = Math.max(0.2, Math.min(10, Math.round((+this.value || 1) * 10) / 10)); this.value = S.bd.roulPeriod; boardSettingChanged(); });
   $("useSkins").addEventListener("change", function () { prefs.useSkins = this.checked; savePrefs(); buildPalette(); buildSettingsGrids(); S.dirty = true; });
+  $("teach").addEventListener("change", function () { S.teach = this.checked; });
   $("btnClearLearn").addEventListener("click", function () { exemplars = []; save("pt.ex", exemplars); syncLearnNote(); if (S.imgData && S.rect) readShot(false); });
   $("btnClearSkins").addEventListener("click", function () { skinData = {}; save("pt.skins", skinData); applySkins(); S.dirty = true; });
   $("exp").addEventListener("change", function () {
