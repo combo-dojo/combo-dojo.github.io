@@ -607,7 +607,7 @@ body.m-pool #board { box-shadow: 0 0 0 5px var(--neon), 0 0 30px 6px var(--neon-
           </div>
         </details>
         <div class="set"><label for="useSkins"><span data-i18n="skinT"></span><span class="sub" id="skinNote"></span></label><span class="row"><button type="button" class="small ghost" id="btnClearSkins" hidden data-i18n="clear"></button><span class="switch"><input type="checkbox" id="useSkins" checked><span></span></span></span></div>
-        <div class="set"><label for="noGlow"><span data-i18n="noGlowT"></span><span class="sub" data-i18n="noGlowS"></span></label><span class="switch"><input type="checkbox" id="noGlow"><span></span></span></div>
+        <div class="set"><label for="glow"><span data-i18n="glowT"></span><span class="sub" data-i18n="glowS"></span></label><span class="switch"><input type="checkbox" id="glow"><span></span></span></div>
         <div class="set"><label for="noAnim"><span data-i18n="noAnimT"></span><span class="sub" data-i18n="noAnimS"></span></label><span class="switch"><input type="checkbox" id="noAnim"><span></span></span></div>
         <div class="set"><label for="exp"><span data-i18n="expT"></span><span class="sub" data-i18n="expS"></span></label><span class="switch"><input type="checkbox" id="exp"><span></span></span></div>
         <div class="exp" id="expBox" hidden>
@@ -2160,17 +2160,17 @@ I18N.ko = {
   teachS: "켜 두면 스크린샷 판면에서 잘못 읽은 드롭을 고친 내용(판면 편집, 한 번 누르기)을 이후 스크린샷에 활용합니다. 꺼 두면 편집은 판면만 바꿉니다.",
   rulesSum: "규칙 설명"
 };
-Object.assign(I18N.zh, { noGlowT: "刪除寶珠光暈", noGlowS: "寶珠唔畫發光效果，低階手機會順啲", noAnimT: "刪除寶珠動畫", noAnimS: "交換時寶珠直接跳格，唔再滑動" });
-Object.assign(I18N.en, { noGlowT: "Remove orb glow", noGlowS: "Orbs are drawn without the glow, smoother on low-end phones", noAnimT: "Remove orb animation", noAnimS: "Swapped orbs jump straight into place instead of sliding" });
-Object.assign(I18N.ja, { noGlowT: "ドロップの光彩をオフ", noGlowS: "ドロップの発光を描かず、低スペック端末でも軽くなります", noAnimT: "ドロップのアニメをオフ", noAnimS: "入れ替え時にスライドせず、すぐに移動します" });
-Object.assign(I18N.ko, { noGlowT: "드롭 광채 끄기", noGlowS: "드롭의 빛 효과를 그리지 않아 저사양 휴대폰에서 더 부드럽습니다", noAnimT: "드롭 애니메이션 끄기", noAnimS: "바꿀 때 미끄러지지 않고 바로 자리로 이동합니다" });
+Object.assign(I18N.zh, { glowT: "開啟寶珠光暈", glowS: "寶珠加上發光效果（低階手機可能會慢啲）", noAnimT: "刪除寶珠動畫", noAnimS: "交換時寶珠直接跳格，唔再滑動" });
+Object.assign(I18N.en, { glowT: "Orb glow", glowS: "Draw orbs with a neon glow (may be slower on low-end phones)", noAnimT: "Remove orb animation", noAnimS: "Swapped orbs jump straight into place instead of sliding" });
+Object.assign(I18N.ja, { glowT: "ドロップの光彩をオン", glowS: "ドロップを発光させて描きます（低スペック端末では重くなることがあります）", noAnimT: "ドロップのアニメをオフ", noAnimS: "入れ替え時にスライドせず、すぐに移動します" });
+Object.assign(I18N.ko, { glowT: "드롭 광채 켜기", glowS: "드롭에 빛 효과를 더합니다 (저사양 휴대폰에서는 느려질 수 있음)", noAnimT: "드롭 애니메이션 끄기", noAnimS: "바꿀 때 미끄러지지 않고 바로 자리로 이동합니다" });
 
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v43", APP_DATE = "2026-11-02";
+  var APP_VERSION = "v44", APP_DATE = "2026-11-02";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
@@ -2178,7 +2178,7 @@ Object.assign(I18N.ko, { noGlowT: "드롭 광채 끄기", noGlowS: "드롭의 �
   function load(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 
-  var prefs = Object.assign({ timeLimit: 5, timeInf: true, useSkins: true, noGlow: false, noAnim: false, exp: false, autoNext: true, size: "5x6", speed: 1, lang: null, v: 3, randColors: [0, 1, 2, 3, 4, 5], hellTime: 4, hellSky: false, hellBest: null }, load("pt.prefs", {}));
+  var prefs = Object.assign({ timeLimit: 5, timeInf: true, useSkins: true, glow: false, noAnim: false, exp: false, autoNext: true, size: "5x6", speed: 1, lang: null, v: 3, randColors: [0, 1, 2, 3, 4, 5], hellTime: 4, hellSky: false, hellBest: null }, load("pt.prefs", {}));
   if (!prefs.v || prefs.v < 3) { prefs.timeInf = true; prefs.v = 3; }
   if (!prefs.lang) { var nl = (navigator.language || "zh").toLowerCase(); prefs.lang = nl.indexOf("ja") === 0 ? "ja" : nl.indexOf("zh") === 0 ? "zh" : nl.indexOf("ko") === 0 ? "ko" : "en"; }
   function savePrefs() { save("pt.prefs", prefs); }
@@ -2271,7 +2271,7 @@ Object.assign(I18N.ko, { noGlowT: "드롭 광채 끄기", noGlowS: "드롭의 �
     ["#9aa2ae", "#2b3038", "#060708", "#ff8a3a"], ["#c6c6d0", "#5a5a64", "#18181c", "#c6c6d0"]
   ];
   function orbSpriteNeon(code, px) {
-    var key = "n" + code + "_" + px + (prefs.noGlow ? "g" : ""), glow = prefs.noGlow ? 0 : 1;
+    var key = "n" + code + "_" + px + (prefs.glow ? "" : "g"), glow = prefs.glow ? 1 : 0; // glow is off unless turned on
     if (orbCache[key]) return orbCache[key];
     var cv = document.createElement("canvas"); cv.width = cv.height = px;
     var g = cv.getContext("2d"), c = px / 2, r = px * 0.44, cl = NEON[code] || NEON[10], sq = code === 5;
@@ -4119,7 +4119,7 @@ Object.assign(I18N.ko, { noGlowT: "드롭 광채 끄기", noGlowS: "드롭의 �
   function syncSettings() {
     $("timeLimit").value = prefs.timeLimit; $("timeInf").checked = prefs.timeInf; $("timeLimit").disabled = prefs.timeInf;
     $("sky").checked = S.bd.skyfall; $("dim").checked = !!S.bd.dim; $("ninja").checked = !!S.bd.ninja; $("roulPeriod").value = S.bd.roulPeriod;
-    $("useSkins").checked = prefs.useSkins; $("noGlow").checked = !!prefs.noGlow; $("noAnim").checked = !!prefs.noAnim; $("teach").checked = !!prefs.teach; $("exp").checked = prefs.exp; $("expBox").hidden = !prefs.exp; $("autoNext").checked = prefs.autoNext;
+    $("useSkins").checked = prefs.useSkins; $("glow").checked = !!prefs.glow; $("noAnim").checked = !!prefs.noAnim; $("teach").checked = !!prefs.teach; $("exp").checked = prefs.exp; $("expBox").hidden = !prefs.exp; $("autoNext").checked = prefs.autoNext;
     Array.prototype.forEach.call($("matchSeg").children, function (b) { b.setAttribute("aria-pressed", +b.dataset.k === matchK() ? "true" : "false"); b.textContent = t("kOrbs", { k: b.dataset.k }); });
     Array.prototype.forEach.call($("speedSeg").children, function (b) { b.setAttribute("aria-pressed", +b.dataset.s === prefs.speed ? "true" : "false"); });
     $("roulNote").hidden = hasRoulette();
@@ -4131,7 +4131,7 @@ Object.assign(I18N.ko, { noGlowT: "드롭 광채 끄기", noGlowS: "드롭의 �
   $("dim").addEventListener("change", function () { S.bd.dim = this.checked; boardSettingChanged(); });
   $("ninja").addEventListener("change", function () { S.bd.ninja = this.checked; boardSettingChanged(); });
   $("roulPeriod").addEventListener("change", function () { S.bd.roulPeriod = Math.max(0.2, Math.min(10, Math.round((+this.value || 1) * 10) / 10)); this.value = S.bd.roulPeriod; boardSettingChanged(); });
-  $("noGlow").addEventListener("change", function () { prefs.noGlow = this.checked; savePrefs(); orbCache = {}; decoCache = {}; decoCount = 0; skinGen++; buildPalette(); buildSettingsGrids(); if (S.bd) showBreakdown(S.phase === "done" ? S.res : null); S.dirty = true; });
+  $("glow").addEventListener("change", function () { prefs.glow = this.checked; savePrefs(); orbCache = {}; decoCache = {}; decoCount = 0; skinGen++; buildPalette(); buildSettingsGrids(); if (S.bd) showBreakdown(S.phase === "done" ? S.res : null); S.dirty = true; });
   $("noAnim").addEventListener("change", function () { prefs.noAnim = this.checked; savePrefs(); S.dirty = true; });
   $("useSkins").addEventListener("change", function () { prefs.useSkins = this.checked; savePrefs(); buildPalette(); buildSettingsGrids(); S.dirty = true; });
   $("teach").addEventListener("change", function () { prefs.teach = this.checked; savePrefs(); });
@@ -4304,6 +4304,11 @@ Object.assign(I18N.ko, { noGlowT: "드롭 광채 끄기", noGlowS: "드롭의 �
   if (initial && (initial.match !== 3 || initial.rows > 7 || initial.ninja)) prefs.exp = true;
   S.bd = initial || E.decode(load("pt.board", "")) || null;
   if (!S.bd) { S.bd = blankBoard(5, 6); S.bd.orbs = E.randomBoard(5, 6, 3, E.rng(20261020)); }
+  // every visit starts without skyfall (a shared link keeps its own setting)
+  if (!initial) {
+    S.bd.skyfall = false;
+    var pr0 = E.decode(load("pt.practice", "")); if (pr0 && pr0.skyfall) { pr0.skyfall = false; save("pt.practice", E.encode(pr0)); }
+  }
   S.live = S.bd.orbs.slice();
   applyLang();
   applySkins();
