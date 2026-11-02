@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Cinzel:wght@600;700&family=Dela+Gothic+One&family=IBM+Plex+Mono:wght@500&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+JP:wght@700;900&family=Noto+Serif+TC:wght@700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Cinzel:wght@600;700&family=Dela+Gothic+One&family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+JP:wght@700;900&family=Noto+Serif+TC:wght@700;900&display=swap">
 <style>
 /* Layout: a dungeon hall — the board is the lit altar on the left, tool slabs stacked on the right; one column on phones.
    Deliberately a single dark look (torch-lit stone), so no light theme. */
@@ -399,6 +399,7 @@ body.m-hell .slab { background: var(--panel); border-color: var(--neon); }
 body.m-endless .tabs button[aria-pressed="true"], body.m-hell .tabs button[aria-pressed="true"], body.m-pool .tabs button[aria-pressed="true"] { background: var(--neon); color: var(--neon-ink); }
 body.m-hell h1 { color: #fffaf4; text-shadow: 0 0 4px #fff, 0 0 10px var(--neon), 0 0 24px var(--neon), 0 0 48px var(--neon-soft); }
 body.m-pool #board { box-shadow: 0 0 0 5px var(--neon), 0 0 30px 6px var(--neon-soft); }
+:root:lang(ko) { --display: "Black Han Sans", "Noto Sans KR", sans-serif; --body: "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
 </style>
 
 <div class="wrap">
@@ -419,6 +420,7 @@ body.m-pool #board { box-shadow: 0 0 0 5px var(--neon), 0 0 30px 6px var(--neon-
         <button type="button" data-lang="zh" lang="zh-Hant" aria-pressed="true">中文</button>
         <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
         <button type="button" data-lang="ja" lang="ja" aria-pressed="false">日本語</button>
+        <button type="button" data-lang="ko" lang="ko" aria-pressed="false">한국어</button>
       </div>
     </div>
   </header>
@@ -605,6 +607,8 @@ body.m-pool #board { box-shadow: 0 0 0 5px var(--neon), 0 0 30px 6px var(--neon-
           </div>
         </details>
         <div class="set"><label for="useSkins"><span data-i18n="skinT"></span><span class="sub" id="skinNote"></span></label><span class="row"><button type="button" class="small ghost" id="btnClearSkins" hidden data-i18n="clear"></button><span class="switch"><input type="checkbox" id="useSkins" checked><span></span></span></span></div>
+        <div class="set"><label for="noGlow"><span data-i18n="noGlowT"></span><span class="sub" data-i18n="noGlowS"></span></label><span class="switch"><input type="checkbox" id="noGlow"><span></span></span></div>
+        <div class="set"><label for="noAnim"><span data-i18n="noAnimT"></span><span class="sub" data-i18n="noAnimS"></span></label><span class="switch"><input type="checkbox" id="noAnim"><span></span></span></div>
         <div class="set"><label for="exp"><span data-i18n="expT"></span><span class="sub" data-i18n="expS"></span></label><span class="switch"><input type="checkbox" id="exp"><span></span></span></div>
         <div class="exp" id="expBox" hidden>
           <p class="hint unlocked" data-i18n="poolUnlocked"></p>
@@ -778,28 +782,28 @@ var Engine = (function () {
   }
 
   // Random board with no ready-made matches. colors: the orb codes to draw from (default the six colours);
-  // probs: optional weights for those codes.
-  function randomBoard(R, C, k, r, probs, colors) {
+  // probs: optional weights; initial: surviving orbs to keep, with -1 for holes. Returns null if no board was found.
+  function randomBoard(R, C, k, r, probs, colors, initial) {
     colors = colors && colors.length ? colors : [0, 1, 2, 3, 4, 5];
     if (!probs || probs.length !== colors.length) probs = colors.map(function () { return 1 / colors.length; });
-    var b;
+    var remaining = initial ? initial.slice() : new Array(R * C).fill(-1);
+    if (findGroups(remaining, R, C, k, true).length) return null;
     for (var tries = 0; tries < 200; tries++) {
-      b = [];
-      for (var i = 0; i < R * C; i++) {
-        var v, t = 0, bad;
-        do {
-          v = colors[pick(r, probs)]; t++; bad = false;
-          var rr = (i / C) | 0, cc = i % C, j;
-          if (v !== STONE) {
-            if (cc >= k - 1) { for (j = 1; j < k && b[i - j] === v; j++); if (j === k) bad = true; }
-            if (!bad && rr >= k - 1) { for (j = 1; j < k && b[i - j * C] === v; j++); if (j === k) bad = true; }
-          }
-        } while (bad && t < 40);
-        b.push(v);
+      var b = remaining.slice(), i;
+      for (i = 0; i < R * C; i++) {
+        if (remaining[i] >= 0) continue;
+        var choices = [], weights = [], total = 0;
+        colors.forEach(function (v, j) {
+          if (!(probs[j] > 0)) return;
+          b[i] = v;
+          if (!findGroups(b, R, C, k, true).length) { choices.push(v); weights.push(probs[j]); total += probs[j]; }
+        });
+        if (!choices.length) break;
+        b[i] = choices[pick(r, weights.map(function (w) { return w / total; }))];
       }
-      if (!findGroups(b, R, C, k, true).length) return b;
+      if (i === R * C) return b;
     }
-    return b;
+    return null;
   }
 
   // ----- board codes (URL-safe base64; v2) -----
@@ -928,7 +932,38 @@ var PathGeo = (function () {
     var out = mid; out.pin = pin; out.pout = pout;
     return out;
   }
-  return { points: points };
+  // Cell-sized hit regions leave only a narrow gap at each corner for diagonal moves.
+  function dragPath(start, rows, cols, from, to) {
+    // shortcut: the corner gap is not calibrated against native devices; tune after side-by-side touch testing.
+    var eps = 1e-7, corner = 0.08, half = 0.5 - eps;
+    function clamp(v, max) { return Math.max(eps * 2, Math.min(max - eps * 2, v)); }
+    var x = clamp(from[0], cols), y = clamp(from[1], rows);
+    var dx = clamp(to[0], cols) - x, dy = clamp(to[1], rows) - y;
+    if (!dx && !dy) return [];
+    var planes = [[1, 0, half], [-1, 0, half], [0, 1, half], [0, -1, half], [1, 1, 1 - corner], [1, -1, 1 - corner], [-1, 1, 1 - corner], [-1, -1, 1 - corner]];
+    var path = [], held = start, at = 0;
+    for (var step = 0; step < rows * cols; step++) {
+      var row = Math.floor(held / cols), col = held % cols, next = -1, best = Infinity;
+      for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) {
+        var nr = row + dr, nc = col + dc;
+        if ((!dr && !dc) || nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+        var enter = at, exit = 1;
+        for (var p = 0; p < planes.length; p++) {
+          var plane = planes[p], value = plane[0] * (x - nc - 0.5) + plane[1] * (y - nr - 0.5) - plane[2];
+          var delta = plane[0] * dx + plane[1] * dy;
+          if (!delta) { if (value > 0) { exit = -1; break; } }
+          else if (delta > 0) exit = Math.min(exit, -value / delta);
+          else enter = Math.max(enter, -value / delta);
+          if (enter > exit) break;
+        }
+        if (exit > enter + eps && enter < best) { next = nr * cols + nc; best = enter; }
+      }
+      if (next < 0) break;
+      path.push(next); held = next; at = best;
+    }
+    return path;
+  }
+  return { points: points, dragPath: dragPath };
 })();
 
 // ===== SCREENSHOT VISION (pure functions on {data,width,height}) =====
@@ -1749,6 +1784,9 @@ I18N.ja.poolRules += "30点稼ぐごとにスーパーショットが1回使え�
 Object.assign(I18N.zh, { btnNext: "繼續 ›", autoNext: "放手後自動繼續", nEndless: "無限隨機：轉完後沿用消除後的盤面繼續（空格隨機補上），計平均 Combo 和平均時間。想換全新盤面可按上面的「隨機珠」標籤重新隨機。" });
 Object.assign(I18N.en, { btnNext: "Continue ›", autoNext: "Continue automatically after each move", nEndless: "Endless: after each move you carry on with the board left after clearing (empty cells are refilled at random), tracking average combos and time. For a brand-new board, use “New board with these” in the orb-types tag above." });
 Object.assign(I18N.ja, { btnNext: "続ける ›", autoNext: "指を離したら自動で続ける", nEndless: "エンドレス：消えた後の盤面をそのまま使って続けます（空きマスはランダムで補充）。平均コンボと平均時間を集計します。新しい盤面にするには上の「ドロップ」タグから作り直せます。" });
+Object.assign(I18N.zh, { nGenerateFailed: "未能生成沒有預先連好的盤面。請增加隨機珠的種類後再試。", nRefillFailed: "未能在保留剩餘寶珠的同時，補出沒有預先連好的盤面。請增加隨機珠的種類，或建立新的隨機盤面。" });
+Object.assign(I18N.en, { nGenerateFailed: "Couldn't create a board without ready-made matches. Select more orb types and try again.", nRefillFailed: "Couldn't refill without ready-made matches while keeping the remaining orbs. Select more orb types or start a new random board." });
+Object.assign(I18N.ja, { nGenerateFailed: "最初から消える並びのない盤面を作れませんでした。ランダムに使うドロップの種類を増やして、もう一度お試しください。", nRefillFailed: "残ったドロップを保ったまま、最初から消える並びのない補充ができませんでした。ドロップの種類を増やすか、新しいランダム盤面を作ってください。" });
 Object.assign(I18N.zh, { bkHead: "消除：", bkItem: "{o} {n} 串（{s} 粒）", bkSep: "、" });
 Object.assign(I18N.en, { bkHead: "Cleared: ", bkItem: "{o} ×{n} ({s} orbs)", bkSep: ", " });
 Object.assign(I18N.ja, { bkHead: "消去：", bkItem: "{o} {n} 個（{s} 個ずつ）", bkSep: "・" });
@@ -1828,12 +1866,311 @@ I18N.en.rule1 = I18N.en.rule1.replace(/<b>Super darkness<\/b>[^.]*\.\s*/, "");
 Object.assign(I18N.zh, { rulesSum: "規則說明" }); Object.assign(I18N.en, { rulesSum: "Rules" }); Object.assign(I18N.ja, { rulesSum: "ルール説明" });
 I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are visible. ", "");
 
+// ----- 한국어 (Korean) -----
+I18N.ko = {
+  modeHell: "지옥",
+  dropShort: "또는 스크린샷을 끌어다 놓기 / 붙여넣기 (Ctrl+V)",
+  btnHellStart: "▶ 지옥 모드 시작",
+  btnHellAgain: "↺ 다시 도전",
+  hellTitle: "지옥 모드",
+  hellRules: "랜덤 판면 10라운드. 3초 카운트다운 후 시작합니다. 각 라운드는 소거(와 낙하)가 끝나고 1초 뒤에 조작 시간이 자동으로 시작되며, 그 1초 안에 움직이기 시작하면 시간을 온전히 쓸 수 있습니다. 점수는 10라운드의 평균 콤보입니다.",
+  hellRoundK: "라운드",
+  hellBestK: "최고 평균",
+  hellSet: "판면 위 태그를 눌러 지옥 모드 전용 조작 시간과 낙하 설정을 바꿀 수 있습니다. 기본값: 4초, 낙하 없음.",
+  hellLine: "{n}라운드 · <b>{c}</b>콤보 · {t}초",
+  cReady: "준비",
+  chipRound: "{n}/10 라운드",
+  nHellIntro: "지옥 모드: “지옥 모드 시작”을 누르면 3초 카운트다운 후 시작합니다.",
+  nHellRound: "{n}/10 라운드: {t}초에 {c}콤보.",
+  nHellDone: "지옥 모드 완료! 10라운드 평균 {v}콤보 (총 {s}콤보, 평균 {t}초).",
+  nHellNewBest: "최고 기록 갱신!",
+  dimT: "암흑",
+  dimS: "드롭이 가려지며, 한 번 움직인 드롭은 다시 보입니다",
+  boardOpts: "판면 효과:",
+  menuCustom: "직접 입력",
+  sizeChip: "판면 크기",
+  timeChip: "조작 시간",
+  title: "콤보 수련장",
+  tag: "드롭 판면 스크린샷을 올리거나 랜덤 판면을 사용해, 직접 드롭을 움직여 몇 콤보를 몇 초에 만들 수 있는지 연습하세요.",
+  modePractice: "연습",
+  modeEndless: "엔드리스",
+  modeAria: "모드",
+  langAria: "언어",
+  maxPre: "이론상 최대",
+  maxPost: "콤보",
+  resCombo: "콤보",
+  resTime: "조작 시간",
+  resSteps: "이동 수",
+  resHp: "HP 피해",
+  sec: "초",
+  noteIdle: "드롭을 누른 채 끌면 지나가는 드롭과 자리가 바뀝니다. 손을 떼면 소거됩니다. 타이머는 처음 바꾸는 순간 시작합니다.",
+  boardAria: "드롭 판면: 드롭을 누른 채 끌어 주세요",
+  btnRetry: "↺ 다시 하기",
+  btnReplay: "▶ 리플레이",
+  btnSave: "★ 루트 저장",
+  btnContinue: "결과 판면에서 계속",
+  btnNext: "계속 ›",
+  btnEdit: "✎ 판면 편집",
+  btnEditDone: "✓ 편집 완료",
+  speedAria: "리플레이 속도",
+  editHint: "도구를 고른 뒤 칸을 누르거나 끌어 주세요. 가시·구름·룰렛·테이프는 한 번 누르면 추가, 다시 누르면 제거됩니다. 수정 내용을 인식기에 기억시키려면 실험 모드에서 “인식기 가르치기”를 켜 주세요.",
+  srcTitle: "판면 가져오기",
+  srcRandom: "랜덤 판면",
+  srcShot: "스크린샷",
+  srcCode: "코드",
+  srcCont: "이어진 판면",
+  upload: "스크린샷 업로드",
+  dropText: "이미지를 여기로 끌어다 놓거나 붙여넣기(Ctrl+V)해도 됩니다. 판면 전체가 보여야 합니다.",
+  btnRandom: "랜덤 판면",
+  sizeAria: "판면 크기",
+  size10: "가로 6 × 세로 10",
+  alignSum: "스크린샷 위치 맞추기 (격자가 어긋날 때)",
+  auto: "자동",
+  redetect: "다시 자동으로 맞추기",
+  alignHint: "격자가 맞지 않으면 직접 끌어서 옮기거나 아래에서 미세 조정하세요.",
+  sx: "좌우",
+  sy: "상하",
+  sw: "크기",
+  shotAria: "위치 맞추기 격자가 있는 스크린샷",
+  endTitle: "엔드리스",
+  reset: "초기화",
+  stRounds: "판면 수",
+  stAvgC: "평균 콤보",
+  stAvgT: "평균 시간",
+  stBest: "최고",
+  autoNext: "손을 떼면 자동으로 계속",
+  endHint: "판면 크기, 제한 시간, 낙하, 실험 설정이 모두 적용됩니다. 실제로 움직인 판면만 집계합니다.",
+  codeTitle: "판면 코드",
+  copyCode: "코드 복사",
+  copyLink: "공유 링크 복사",
+  codePh: "판면 코드 또는 패턴 세트 코드를 붙여넣기",
+  codeOutAria: "현재 판면 코드",
+  load: "불러오기",
+  codeHint: "코드에는 판면, 방해 요소, 룰렛, 낙하, 소거 개수 설정이 담깁니다. 제한 시간은 각자 설정합니다.",
+  codeBad: "잘못된 코드입니다. 빠진 글자나 공백이 없는지 확인하세요.",
+  codeOk: "판면을 불러왔습니다 ({size}).",
+  copiedCode: "코드를 복사했습니다",
+  copiedLink: "링크를 복사했습니다",
+  selectManual: "선택했습니다. 직접 복사해 주세요",
+  recTitle: "루트 기록",
+  recThis: "이 판면",
+  recBest: "베스트 3 (자동 기록)",
+  recSaved: "저장됨",
+  recEmptyBest: "아직 기록이 없습니다. 한 번 움직이면 기록됩니다.",
+  recEmptySaved: "저장한 루트가 없습니다. 움직인 뒤 “루트 저장”을 누르세요.",
+  recLine: "<b>{c}</b>콤보 · {t}초 · {n}번 이동",
+  play: "▶ 리플레이",
+  del: "삭제",
+  keep: "저장",
+  setTitle: "설정",
+  timeT: "조작 시간",
+  timeS: "처음 드롭을 바꾸는 순간 카운트다운 시작",
+  timeInf: "제한 없음",
+  nSec: "{n}초",
+  secAria: "제한 시간(초)",
+  skySum: "낙하와 드롭 확률",
+  skyT: "낙하 시뮬레이션",
+  skyS: "기본은 꺼짐: 소거된 칸은 빈 채로 남습니다",
+  boostHint: "어떤 색에 X%를 더하면 그 색의 확률이 X%포인트 올라가고, 나머지 색이 남은 확률을 똑같이 나눕니다.",
+  boostAria: "{o} 드롭 강화",
+  roulSum: "룰렛",
+  roulT: "변화 간격",
+  roulS: "룰렛 칸이 순서상 다음 드롭으로 바뀌기까지의 초",
+  roulOrder: "변화 순서 (포함할 드롭을 누르세요). 순서에 없는 드롭은 다음에 첫 번째 드롭으로 바뀝니다.",
+  roulNote: "판면에 룰렛 칸이 있을 때만 작동합니다 (스크린샷에서 자동 인식되거나 “판면 편집”으로 추가).",
+  darkT: "초암흑",
+  darkS: "움직이는 동안에도 판면 전체가 가려집니다. 일부 칸만 가리려면 “초암흑 칸” 도구를 쓰세요",
+  skinT: "스크린샷의 드롭 그림 사용",
+  skinS0: "업로드하면 스크린샷에서 자동으로 잘라냅니다",
+  skinS: "스크린샷에서 드롭 디자인 {n}종을 잘라냈습니다 (브라우저에만 저장)",
+  clear: "지우기",
+  expT: "실험 모드",
+  expS: "소거 개수, 6 × 10 판면, 돌 드롭, 닌자 모드",
+  matchT: "소거 개수",
+  matchAria: "소거에 필요한 드롭 수",
+  kOrbs: "{k}개",
+  ninjaT: "닌자",
+  ninjaS: "손가락 근처의 드롭만 보입니다",
+  stoneHint: "“판면 편집”으로 돌 드롭을 놓을 수 있습니다. 소거되지 않고 움직일 수도 없습니다. 6 × 10 판면은 “판면 가져오기”에서 고르세요.",
+  hpCorner: "HP −{p}%",
+  nTape: "테이프 아래의 드롭은 움직일 수 없습니다.",
+  nStone: "돌 드롭은 움직일 수 없습니다.",
+  nResult: "{t}초에 {c}콤보.",
+  nTimeUp: "시간 종료. ",
+  nCap: "255콤보 상한에 도달해 집계를 멈췄습니다.",
+  nRank: "{r}위 기록 갱신!",
+  nMaxHit: "이론상 최대 달성.",
+  nMax: "이론상 최대는 {m}콤보입니다.",
+  nDmg: "HP −{p}% 피해 (가시 {a}%, 폭탄 {b}%).",
+  nReset: "원래 판면으로 되돌렸습니다.",
+  nNew: "새 랜덤 판면.",
+  nCont: "결과 판면에서 계속합니다.",
+  nEndless: "엔드리스 켜짐: 움직인 직후, 소거되고 남은 판면(빈칸은 랜덤으로 채움)으로 다음 라운드가 바로 시작되며 평균 콤보와 시간을 집계합니다. “♾ 엔드리스”를 다시 누르면 꺼집니다.",
+  nReplay: "리플레이 중: {c}콤보 · {t}초. 판면을 누르면 멈춥니다.",
+  nReplayDone: "리플레이가 끝났습니다.",
+  nReplayStop: "리플레이를 멈췄습니다.",
+  nSaved: "루트를 저장했습니다.",
+  nSavedAlready: "이미 저장된 루트입니다.",
+  nStorage: "브라우저 저장 공간이 가득 차서 기록을 저장하지 못했습니다.",
+  nNotImage: "이미지 파일이 아닙니다. PNG 또는 JPG 스크린샷을 골라 주세요.",
+  nBadImage: "이미지를 읽지 못했습니다. 다시 업로드해 주세요.",
+  nAligning: "위치를 맞추는 중…",
+  nReadPlain: "{size} 판면을 읽었습니다.",
+  nReadFound: "{size} 판면을 읽고 {list}을(를) 찾았습니다.",
+  nThornN: "가시 드롭 {n}개",
+  nRoulN: "룰렛 칸 {n}개",
+  nTapeN: "테이프 칸 {n}개",
+  nCloudN: "구름 칸 {n}개 (구름 아래 드롭은 보이지 않아 랜덤으로 채웠습니다)",
+  nLow: "{n}개의 드롭이 불확실합니다 (노란 점선 원). “판면 편집”으로 확인하세요.",
+  nFix: "잘못 읽은 드롭은 “판면 편집”으로 고칠 수 있습니다.",
+  nFromLink: "링크에서 판면을 불러왔습니다.",
+  listSep: ", ",
+  mStart: "시",
+  mEnd: "끝",
+  cEdit: "편집 중",
+  cWait: "타이머 대기",
+  cNoLimit: "제한 없음",
+  cTapRetry: "판면을 눌러 다시 하기",
+  cReplay: "리플레이",
+  chipTime: "{n}초",
+  chipNoLimit: "제한 없음",
+  chipK: "{k}개 소거",
+  chipSkyOn: "낙하 있음",
+  chipSkyOff: "낙하 없음",
+  chipBoost: "드롭 강화",
+  chipRoul: "룰렛 {n}초",
+  chipDark: "초암흑",
+  chipNinja: "닌자",
+  orbs: ["불", "물", "나무", "빛", "어둠", "회복", "방해", "독", "맹독", "폭탄", "불명", "돌"],
+  tools: { thorn: "가시", cloud: "구름", roul: "룰렛", tape: "테이프", clear: "방해 요소 제거", noclr: "소거 불가", start: "시작 칸", sdark: "초암흑", weak: "약화" },
+  rule1: "<b>규칙:</b> 대각선 이동이 가능합니다. <b>가시 드롭</b>은 한 칸 밀려날 때마다 HP 4%가 깎입니다 (직접 집어 든 가시 드롭을 움직이는 것은 무료). <b>폭탄</b>은 손을 뗄 때 이미 맞춰져 있어야만 소거되며, 맞춰지지 않은 폭탄은 먼저 폭발해 그 행과 열 전체를 지우고 개당 HP 20%가 깎입니다. <b>테이프</b> 아래 드롭은 움직일 수 없고 지나갈 수도 없습니다. <b>구름</b>은 아래 드롭을 가립니다. <b>룰렛</b> 칸은 일정 시간마다 순서대로 바뀝니다 (손에 든 드롭은 바뀌지 않음). 같은 색으로 이어진 한 번의 소거가 1콤보이며 최대 255콤보입니다. <b>소거 불가</b> 드롭(빨간 ✕)은 움직일 수 있지만 절대 소거되지 않고 폭탄으로도 부서지지 않습니다. <b>조작 시작 고정</b>이면 조준선 안의 드롭만 집을 수 있습니다. <b>초암흑</b> 드롭은 검게 표시되고(회복 드롭은 검은 사각형) 안경이 씌워져 있어 움직이는 동안에도 색을 알 수 없습니다. <b>약화</b> 드롭은 구석에 파란 “−” 배지가 있습니다 (여기서는 표시만 하며 평소처럼 소거됩니다).",
+  rule2: "<b>이론상 최대 콤보</b> = 각 드롭 개수 ÷ 소거 개수의 합. 상한값일 뿐이며 실제 판면에서는 도달하지 못할 수도 있습니다.",
+  rule3: "스크린샷은 브라우저 안에서만 처리되며 업로드되지 않습니다. 잘라낸 드롭 그림, 루트 기록, 통계도 모두 본인 브라우저에만 남습니다. 이 도구는 어떤 게임 회사와도 관련이 없습니다.",
+  nFixedStart: "조작 시작 고정: 조준선 안의 드롭을 집어야 합니다.",
+  chipStart: "시작 고정",
+  nStartFound: "조작 시작 고정 ({r}행 {c}열)",
+  nNoclrN: "소거 불가 드롭 {n}개",
+  nFaded: "이 스크린샷의 드롭은 너무 흐려서 대부분의 색은 추측입니다 (노란 점선 원). “판면 편집”으로 확인하세요.",
+  randSum: "랜덤 판면에 나오는 드롭",
+  randHint: "랜덤 판면(연습·엔드리스·지옥)에 나올 드롭을 고르세요. 최소 1종은 골라야 합니다.",
+  randStoneHint: "돌 드롭은 실험 모드가 필요합니다.",
+  modePool: "당구",
+  poolTitle: "당구 모드",
+  poolRules: "재미로 하는 모드. 판면의 드롭이 작게 테이블 중앙 아래쪽에 놓입니다. 흰 공을 누른 채 뒤로 당겼다 놓으면 발사되며, 많이 당길수록 세게 칩니다. 포켓에 넣으면 +1점, 같은 색 드롭끼리 부딪히면 둘 다 사라지고 +3점, 흰 공의 링 색과 같으면 +9점. 흰 공이 포켓에 들어가면 −5점이고 제자리로 돌아오며, 한 번 칠 때마다 −0.5점. 흰 공의 링 색은 칠 때마다 바뀝니다. 30점을 얻을 때마다 슈퍼 샷이 충전됩니다. “🔥 슈퍼 샷”을 누르면 흰 공에 불이 붙고 파워 바가 반복 QTE로 바뀌며, 손을 뗄 때 표시 위치에 따라 ×0.7~×5 파워가 됩니다. 5번 칠 때마다 랜덤 이벤트(암흑·돌·폭탄·구름·룰렛 드롭)가 일어납니다.",
+  poolScoreK: "점수",
+  poolShotsK: "샷",
+  poolLeftK: "남은 공",
+  poolIntro: "흰 공을 뒤로 당겼다 놓아서 치세요.",
+  poolPocket: "포켓 +1",
+  poolPop: "같은 색 충돌 +3",
+  poolScratch: "흰 공 포켓: −5, 제자리로.",
+  poolDone: "테이블 클리어! {n}번 샷에 {s}점.",
+  poolRack: "↺ 다시 놓기",
+  poolUse: "현재 판면으로 놓기",
+  poolHint: "테이블은 연습 모드의 판면을 사용합니다. 바꾸려면 연습 모드로 돌아가세요.",
+  poolUnlocked: "숨겨진 당구 모드가 해금되었습니다",
+  seT: "교환 효과음 (SE)",
+  seRec: "🎙 1초 녹음",
+  sePlay: "▶ 재생",
+  seNone: "1초 동안 소리를 녹음하면, 드롭을 바꿀 때마다 가장 큰 소리 부분부터 재생됩니다.",
+  seHave: "사용자 효과음이 저장되어 있습니다.",
+  seRecording: "녹음 중… (1초)",
+  seSaved: "저장했습니다! 이제 바꿀 때마다 재생됩니다.",
+  seQuiet: "소리가 들리지 않았습니다. 다시 시도해 주세요.",
+  seFail: "녹음을 처리하지 못했습니다. 다시 시도해 주세요.",
+  seNoMic: "여기서는 마이크를 쓸 수 없습니다 (브라우저 또는 Claude 페이지 틀이 막고 있음). 직접 운영하는 사이트에서는 작동합니다.",
+  nSdarkN: "초암흑 드롭 {n}개 (색을 알 수 없어 랜덤으로 채웠습니다. “판면 편집”으로 고치세요)",
+  chipOrbs: "드롭 {n}종",
+  randAgain: "↻ 이 드롭으로 새 판면",
+  chipOff: "눌러서 끄기",
+  credit: "常闇TOKOYAMi 제작",
+  contactPre: "문의는 X",
+  contactOr: " 또는 이메일 ",
+  miniHint: "대조용 원본 스크린샷 (눌러서 확대 / 축소).",
+  miniAria: "원본 스크린샷, 눌러서 확대",
+  nWeakN: "약화 드롭 {n}개",
+  superBtn: "🔥 슈퍼 샷",
+  superOn: "🔥 준비 완료 (눌러서 취소)",
+  superK: "슈퍼 충전",
+  ev_dark: "암흑!",
+  ev_stone: "돌!",
+  ev_bomb: "폭탄!",
+  ev_cloud: "구름!",
+  ev_roul: "룰렛!",
+  evNote_dark: "랜덤 이벤트 · 암흑: 이번 샷 동안 모든 드롭이 검게 변합니다.",
+  evNote_stone: "랜덤 이벤트 · 돌: 움직이지 않는 돌이 5샷 동안 나타납니다.",
+  evNote_bomb: "랜덤 이벤트 · 폭탄: 닿으면 같은 행과 열의 드롭을 10배 힘으로 날려 버립니다 (5샷 동안).",
+  evNote_cloud: "랜덤 이벤트 · 구름: 5×5 구름이 3샷 동안 테이블 일부를 가립니다.",
+  evNote_roul: "랜덤 이벤트 · 룰렛: 드롭 하나가 사라질 때까지 계속 색이 바뀝니다.",
+  evNext: "다음 랜덤 이벤트까지 {n}샷",
+  nGenerateFailed: "처음부터 맞춰진 줄이 없는 판면을 만들지 못했습니다. 드롭 종류를 늘려서 다시 시도하세요.",
+  nRefillFailed: "남은 드롭을 유지하면서 처음부터 맞춰진 줄 없이 채우지 못했습니다. 드롭 종류를 늘리거나 새 랜덤 판면을 만드세요.",
+  bkHead: "소거: ",
+  bkItem: "{o} {n}줄 ({s}개씩)",
+  bkSep: ", ",
+  nColorWeak: "색약 모드 표시 색 (자동으로 맞춤)",
+  bkAria: "소거한 드롭과 각 묶음의 크기",
+  modePattern: "패턴",
+  patTitle: "패턴 세트",
+  patShare: "🔗 공유 링크",
+  patSetAria: "패턴 세트",
+  rename: "이름 변경",
+  patSetNew: "＋ 새 세트",
+  delSet: "세트 삭제",
+  delConfirm: "한 번 더 누르면 삭제",
+  patHint: "한 세트에 여러 패턴(예: 적의 행동마다 바뀌는 판면)을 넣을 수 있습니다. 판면 위의 번호를 누르면 그 패턴을 연습하고, 랜덤이 들어간 패턴은 “다시 생성”할 수 있습니다.",
+  patNew: "＋ 패턴 추가",
+  patSetDefault: "내 패턴",
+  patN: "패턴 {n}",
+  patEdit: "편집",
+  patEditing: "패턴 {n} 편집",
+  patNamePh: "이름 (예: 2번째 행동)",
+  patReroll: "🎲 다시 생성",
+  patBarAria: "패턴 선택",
+  patPlaying: "연습 중: {p}.",
+  patRandomHint: " 이 패턴에는 랜덤 요소가 있습니다. “🎲 다시 생성”으로 바꿔 보세요.",
+  patFromLink: "링크에서 패턴 세트를 불러왔습니다.",
+  lay_board: "고정 판면",
+  lay_fill: "판면 전체 변환",
+  lay_spawn: "생성",
+  lay_shape: "모양",
+  layAdd: "단계 추가:",
+  layBoardHint: "이 단계에 스크린샷을 바로 올리거나, 먼저 판면을 준비(편집 또는 랜덤)한 뒤 “현재 판면 사용”을 누르세요.",
+  layBoardUse: "현재 판면 사용",
+  spawnMode: "생성 위치:",
+  spawnModeAria: "생성 위치",
+  spawn_any: "아무 칸 (덮어쓸 수 있음)",
+  spawn_nosame: "이미 같은 색인 드롭에는 생성 안 함",
+  spawn_nogen: "앞 단계에서 생성된 드롭에는 생성 안 함",
+  shapeHint: "칸을 눌러 모양에 추가하거나 빼세요 (예: 음표 모양).",
+  shapeCell: "{r}행 {c}열",
+  srcPattern: "패턴",
+  layBoardUpload: "📷 스크린샷 업로드",
+  patCopyCode: "코드 복사",
+  patImportPh: "패턴 세트 코드(P.로 시작) 또는 공유 링크를 붙여넣기",
+  chipStatOn: "♾ 엔드리스: 켜짐",
+  chipStatOff: "♾ 엔드리스",
+  nStatOff: "엔드리스 꺼짐: 움직인 뒤에는 같은 판면으로 돌아갑니다.",
+  cTapNext: "판면을 눌러 계속",
+  learnT: "스크린샷 학습",
+  learnS: "직접 고친 드롭 {n}개를 기억하고 있습니다 (이후 스크린샷 인식에 사용)",
+  learnS0: "“인식기 가르치기”를 켜고 스크린샷 판면에서 잘못 읽은 드롭을 고치면 기억합니다",
+  learnClear: "지우기",
+  teachT: "인식기 가르치기",
+  teachS: "켜 두면 스크린샷 판면에서 잘못 읽은 드롭을 고친 내용(판면 편집, 한 번 누르기)을 이후 스크린샷에 활용합니다. 꺼 두면 편집은 판면만 바꿉니다.",
+  rulesSum: "규칙 설명"
+};
+Object.assign(I18N.zh, { noGlowT: "刪除寶珠光暈", noGlowS: "寶珠唔畫發光效果，低階手機會順啲", noAnimT: "刪除寶珠動畫", noAnimS: "交換時寶珠直接跳格，唔再滑動" });
+Object.assign(I18N.en, { noGlowT: "Remove orb glow", noGlowS: "Orbs are drawn without the glow, smoother on low-end phones", noAnimT: "Remove orb animation", noAnimS: "Swapped orbs jump straight into place instead of sliding" });
+Object.assign(I18N.ja, { noGlowT: "ドロップの光彩をオフ", noGlowS: "ドロップの発光を描かず、低スペック端末でも軽くなります", noAnimT: "ドロップのアニメをオフ", noAnimS: "入れ替え時にスライドせず、すぐに移動します" });
+Object.assign(I18N.ko, { noGlowT: "드롭 광채 끄기", noGlowS: "드롭의 빛 효과를 그리지 않아 저사양 휴대폰에서 더 부드럽습니다", noAnimT: "드롭 애니메이션 끄기", noAnimS: "바꿀 때 미끄러지지 않고 바로 자리로 이동합니다" });
+
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v42", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v43", APP_DATE = "2026-11-02";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
@@ -1841,9 +2178,9 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   function load(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 
-  var prefs = Object.assign({ timeLimit: 5, timeInf: true, useSkins: true, exp: false, autoNext: true, size: "5x6", speed: 1, lang: null, v: 3, randColors: [0, 1, 2, 3, 4, 5], hellTime: 4, hellSky: false, hellBest: null }, load("pt.prefs", {}));
+  var prefs = Object.assign({ timeLimit: 5, timeInf: true, useSkins: true, noGlow: false, noAnim: false, exp: false, autoNext: true, size: "5x6", speed: 1, lang: null, v: 3, randColors: [0, 1, 2, 3, 4, 5], hellTime: 4, hellSky: false, hellBest: null }, load("pt.prefs", {}));
   if (!prefs.v || prefs.v < 3) { prefs.timeInf = true; prefs.v = 3; }
-  if (!prefs.lang) { var nl = (navigator.language || "zh").toLowerCase(); prefs.lang = nl.indexOf("ja") === 0 ? "ja" : nl.indexOf("zh") === 0 ? "zh" : "en"; }
+  if (!prefs.lang) { var nl = (navigator.language || "zh").toLowerCase(); prefs.lang = nl.indexOf("ja") === 0 ? "ja" : nl.indexOf("zh") === 0 ? "zh" : nl.indexOf("ko") === 0 ? "ko" : "en"; }
   function savePrefs() { save("pt.prefs", prefs); }
   var stats = Object.assign({ n: 0, combos: 0, time: 0, timed: 0, best: 0 }, load("pt.stats", {}));
   var exemplars = load("pt.ex", []);
@@ -1856,7 +2193,8 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   }
   function orbName(c) { return t("orbs")[c] || "?"; }
   function sizeText(bd) { return bd.cols + "×" + bd.rows; }
-  function secs(x) { return prefs.lang === "en" ? x + "s" : x + " " + t("sec"); }
+  function secs(x) { return prefs.lang === "en" ? x + "s" : prefs.lang === "ko" ? x + "초" : x + " " + t("sec"); }
+  function spaced() { return prefs.lang === "en" || prefs.lang === "ko"; } // languages that put spaces between sentences
 
   // ---------- board state ----------
   function blankBoard(R, C) {
@@ -1882,6 +2220,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   function timeLimit() { if (S.mode === "hell") return prefs.hellTime; return prefs.timeInf ? 0 : Math.max(0.5, Math.min(60, +prefs.timeLimit || 5)); }
 
   function setBoard(bd, src) {
+    if (!bd) { noteKey("nGenerateFailed", null, "bad"); return false; }
     stopAll();
     if (!prefs.exp) bd.match = 3;
     if (bd.roulMask == null) bd.roulMask = 63;
@@ -1890,6 +2229,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     if (src) S.src = src;
     save("pt.board", code());
     syncAll();
+    return true;
   }
   function resetLive() { stopAll(); S.live = S.bd.orbs.slice(); S.res = null; S.phase = "ready"; S.roulNext = performance.now() + S.bd.roulPeriod * 1000; syncResult(); S.dirty = true; }
   function stopAll() { if (S.nextTimer) { clearTimeout(S.nextTimer); S.nextTimer = null; } S.move = null; S.replay = null; }
@@ -1931,14 +2271,14 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     ["#9aa2ae", "#2b3038", "#060708", "#ff8a3a"], ["#c6c6d0", "#5a5a64", "#18181c", "#c6c6d0"]
   ];
   function orbSpriteNeon(code, px) {
-    var key = "n" + code + "_" + px;
+    var key = "n" + code + "_" + px + (prefs.noGlow ? "g" : ""), glow = prefs.noGlow ? 0 : 1;
     if (orbCache[key]) return orbCache[key];
     var cv = document.createElement("canvas"); cv.width = cv.height = px;
     var g = cv.getContext("2d"), c = px / 2, r = px * 0.44, cl = NEON[code] || NEON[10], sq = code === 5;
     g.translate(c, c);
     function body() { g.beginPath(); if (sq) roundRectPath(g, -r * 0.92, -r * 0.92, r * 1.84, r * 1.84, r * 0.34); else g.arc(0, 0, r, 0, Math.PI * 2); }
     // halo
-    g.save(); body(); g.shadowColor = cl[3]; g.shadowBlur = px * 0.09; g.fillStyle = cl[2]; g.fill(); g.restore();
+    g.save(); body(); g.shadowColor = cl[3]; g.shadowBlur = px * 0.09 * glow; g.fillStyle = cl[2]; g.fill(); g.restore();
     // glass body: light from the top, deep colour at the rim
     var gr = g.createRadialGradient(-r * 0.25, -r * 0.45, r * 0.05, 0, 0, r * (sq ? 1.35 : 1.05));
     gr.addColorStop(0, cl[0]); gr.addColorStop(0.42, cl[1]); gr.addColorStop(1, cl[2]);
@@ -1948,21 +2288,21 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     body(); g.fillStyle = sh; g.fill();
     // lit neon rim
     g.save(); g.beginPath(); if (sq) roundRectPath(g, -r * 0.86, -r * 0.86, r * 1.72, r * 1.72, r * 0.28); else g.arc(0, 0, r * 0.9, 0, Math.PI * 2);
-    g.lineWidth = Math.max(1, px * 0.032); g.strokeStyle = cl[0]; g.shadowColor = cl[3]; g.shadowBlur = px * 0.05; g.globalAlpha = 0.85; g.stroke(); g.restore();
+    g.lineWidth = Math.max(1, px * 0.032); g.strokeStyle = cl[0]; g.shadowColor = cl[3]; g.shadowBlur = px * 0.05 * glow; g.globalAlpha = 0.85; g.stroke(); g.restore();
     body(); g.lineWidth = Math.max(1, px * 0.02); g.strokeStyle = "rgba(0,0,0,0.65)"; g.stroke();
     var u = r * 0.74;
     if (code === 10) { g.fillStyle = "#fff"; g.font = "700 " + Math.round(r) + "px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("?", 0, r * 0.05); }
     else if (code === 9) {
       g.strokeStyle = "#ffd9a0"; g.lineWidth = px * 0.05; g.lineCap = "round"; glyph(g, 9, u * 1.1); g.stroke();
-      g.save(); g.fillStyle = "#fff3c4"; g.shadowColor = cl[3]; g.shadowBlur = px * 0.08; g.beginPath(); g.arc(0.42 * u, -0.8 * u, px * 0.05, 0, Math.PI * 2); g.fill();
+      g.save(); g.fillStyle = "#fff3c4"; g.shadowColor = cl[3]; g.shadowBlur = px * 0.08 * glow; g.beginPath(); g.arc(0.42 * u, -0.8 * u, px * 0.05, 0, Math.PI * 2); g.fill();
       g.fillStyle = "#ffb070"; g.font = "700 " + Math.round(r * 0.7) + "px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("!", 0, r * 0.12); g.restore();
     } else {
       // the symbol is a lit tube: white core with a coloured glow
       g.save(); glyph(g, code, u);
       g.fillStyle = code === 7 ? "#dcff9a" : code === 8 ? "#ffb2ee" : "#ffffff";
-      g.shadowColor = cl[3]; g.shadowBlur = px * 0.07; g.fill("nonzero"); g.shadowBlur = px * 0.025; g.fill("nonzero"); g.restore();
+      g.shadowColor = cl[3]; g.shadowBlur = px * 0.07 * glow; g.fill("nonzero"); g.shadowBlur = px * 0.025 * glow; g.fill("nonzero"); g.restore();
       if (code === 2) { g.beginPath(); g.moveTo(-0.42 * u, 0.42 * u); g.quadraticCurveTo(0.04 * u, 0.02 * u, 0.42 * u, -0.44 * u); g.strokeStyle = cl[1]; g.lineWidth = px * 0.028; g.lineCap = "round"; g.stroke(); }
-      if (code === 8) { g.save(); g.beginPath(); g.arc(0, 0, r * 0.8, 0, Math.PI * 2); g.strokeStyle = "rgba(255,90,216,0.85)"; g.shadowColor = "#ff5ad8"; g.shadowBlur = px * 0.06; g.lineWidth = px * 0.03; g.stroke(); g.restore(); }
+      if (code === 8) { g.save(); g.beginPath(); g.arc(0, 0, r * 0.8, 0, Math.PI * 2); g.strokeStyle = "rgba(255,90,216,0.85)"; g.shadowColor = "#ff5ad8"; g.shadowBlur = px * 0.06 * glow; g.lineWidth = px * 0.03; g.stroke(); g.restore(); }
     }
     // specular: a crisp arc + a dot, instead of a soft blob
     g.save(); g.lineCap = "round"; g.strokeStyle = "rgba(255,255,255,0.75)"; g.lineWidth = Math.max(1, px * 0.035);
@@ -2324,11 +2664,20 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     S.dirty = true;
   }
   function center(i) { return [(i % S.bd.cols + 0.5) * geo.cell, (Math.floor(i / S.bd.cols) + 0.5) * geo.cell]; }
+  var SWAP_MS = 90;
+  function orbPosition(i, slides, now) {
+    var end = center(i), slide = slides && slides[i];
+    if (!slide) return end;
+    if (prefs.noAnim) return end;
+    var t = Math.max(0, Math.min(1, (now - slide.at) / SWAP_MS));
+    t = 1 - Math.pow(1 - t, 3);
+    return [slide.from[0] + (end[0] - slide.from[0]) * t, slide.from[1] + (end[1] - slide.from[1]) * t];
+  }
   function bigText(txt, x, y, size, fill, align, font) {
     ctx.save(); ctx.font = "700 " + Math.round(size) + "px " + (font || "'Chakra Petch', 'Dela Gothic One', sans-serif"); ctx.textAlign = align || "center"; ctx.textBaseline = "middle";
     ctx.lineWidth = Math.max(3, size * 0.16); ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.strokeText(txt, x, y); ctx.fillStyle = fill; ctx.fillText(txt, x, y); ctx.restore();
   }
-  var UIFONT = "'Noto Sans TC', 'Noto Sans JP', system-ui, sans-serif";
+  var UIFONT = "'Noto Sans TC', 'Noto Sans JP', 'Noto Sans KR', system-ui, sans-serif";
   function hpCorner(p) { if (p > 0) bigText(t("hpCorner", { p: p }), geo.cell * 0.12, geo.H - geo.cell * 0.2, geo.cell * 0.2, "#ff8a7a", "left", UIFONT); }
 
   function drawTiles() {
@@ -2356,14 +2705,14 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     }
     if (hasFlag(i, F_CLOUD)) drawCloud(ctx, p[0], p[1], c, inPlay ? 1 : 0.55);
   }
-  // opts: skip (cell drawn elsewhere), roulFrac, inPlay (clouds opaque), lowConf, hidden (super darkness)
+  // opts: skip (cell drawn elsewhere), slides/slideTime, roulFrac, inPlay (clouds opaque), lowConf, hidden (super darkness)
   function drawBoardState(b, now, opts) {
     opts = opts || {};
     var c = geo.cell;
     drawTiles();
     for (var i = 0; i < b.length; i++) {
       if (i === opts.skip) continue;
-      var p = center(i);
+      var p = orbPosition(i, opts.slides, opts.slideTime == null ? now : opts.slideTime);
       if (b[i] < 0) { ctx.save(); ctx.setLineDash([3, 4]); ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p[0], p[1], c * 0.36, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
       else if (opts.hidden && opts.hidden[i]) drawHidden(ctx, p[0], p[1], c);
       else drawOrb(ctx, p[0], p[1], c * 0.94, b[i]);
@@ -2467,7 +2816,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     } else if (S.phase === "moving") {
       var m = S.move;
       var mask = hideMask(m.seen), hide = mask[m.held];
-      drawBoardState(m.b, now, { skip: m.held, roulFrac: roulFrac, hidden: mask });
+      drawBoardState(m.b, now, { skip: m.held, slides: m.slides, roulFrac: roulFrac, hidden: mask });
       var hc = center(m.held);
       ctx.save(); ctx.globalAlpha = 0.35; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(hc[0], hc[1], c * 0.42, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
       ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.65)"; ctx.shadowBlur = 16;
@@ -2480,7 +2829,9 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
       hpCorner(m.dmg);
     } else if (S.phase === "resolving" || S.phase === "replay-resolve") {
       var res = S.phase === "resolving" ? S.res : S.replay.res, tt = (now - S.resT0) / 1000 * (S.phase === "resolving" ? 1 : S.replay.speed);
-      var n = drawResolve(res, Math.min(tt, res.tl.total), now);
+      var n = 0;
+      if (tt < 0) drawBoardState(res.after, now, { slides: res.slides, slideTime: S.phase === "resolving" ? now : (now - S.replay.t0) * S.replay.speed });
+      else n = drawResolve(res, Math.min(tt, res.tl.total), now);
       bigText(n + " COMBO", geo.W - c * 0.15, c * 0.32, c * 0.4, "#ffd36b", "right");
       hpCorner(res.dmg + (tt > 0.15 ? res.sim.bombDmg : 0));
     } else if (S.phase === "done") {
@@ -2539,7 +2890,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     if (!E.movable(S.live[i])) { note(t("nStone"), "bad"); return; }
     if (S.bd.start >= 0 && i !== S.bd.start) { noteKey("nFixedStart", null, "bad"); S.dirty = true; return; }
     var now = performance.now();
-    S.move = { b: S.live.slice(), start: S.live.slice(), held: i, path: [i], ev: [], t0: now, tFirst: 0, deadline: 0, px: p.x, py: p.y, dmg: 0, seen: S.live.map(function () { return false; }) };
+    S.move = { b: S.live.slice(), start: S.live.slice(), held: i, path: [i], ev: [], slides: {}, t0: now, tFirst: 0, deadline: 0, px: p.x, py: p.y, dmg: 0, seen: S.live.map(function () { return false; }) };
     if (S.mode === "hell" && S.hell && S.hell.deadline) { S.move.tFirst = S.hell.tStart; S.move.deadline = S.hell.deadline; }
     S.phase = "moving"; S.spot = [p.x, p.y];
     try { cv.setPointerCapture(e.pointerId); } catch (err) {}
@@ -2547,19 +2898,17 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   }
   function moveTo(x, y) {
     var m = S.move, c = geo.cell, R = S.bd.rows, C = S.bd.cols;
+    if (m.deadline && performance.now() >= m.deadline) { finishMove(); return; }
+    var from = [m.px / c, m.py / c];
     m.px = Math.max(0, Math.min(geo.W, x)); m.py = Math.max(0, Math.min(geo.H, y));
-    for (var guard = 0; guard < 30; guard++) {
-      var hr = Math.floor(m.held / C), hc = m.held % C;
-      var pr = Math.max(0, Math.min(R - 1, Math.floor(m.py / c))), pc = Math.max(0, Math.min(C - 1, Math.floor(m.px / c)));
-      if (pr === hr && pc === hc) return;
-      var nr = hr + Math.sign(pr - hr), nc = hc + Math.sign(pc - hc);
-      // swap only once the finger is well inside the next cell, so passing a corner doesn't swap diagonally by accident
-      if (nr === pr && nc === pc && Math.hypot(m.px - (nc + 0.5) * c, m.py - (nr + 0.5) * c) > c * 0.47) return;
-      var n = nr * C + nc;
+    var route = PathGeo.dragPath(m.held, R, C, from, [m.px / c, m.py / c]);
+    for (var step = 0; step < route.length; step++) {
+      var n = route[step];
       if (hasFlag(n, F_TAPE) || !E.movable(m.b[n])) return;
       var now = performance.now();
       if (!m.tFirst) { m.tFirst = now; if (timeLimit()) m.deadline = now + timeLimit() * 1000; if (S.mode === "hell" && S.hell) { S.hell.tStart = now; S.hell.deadline = m.deadline; } }
       if (thorny(m.b[n])) m.dmg += E.THORN_DMG; // the orb pushed aside carries thorns
+      m.slides[m.held] = { from: orbPosition(n, m.slides, now), at: now }; delete m.slides[n];
       var tmp = m.b[m.held]; m.b[m.held] = m.b[n]; m.b[n] = tmp;
       // darkness: an orb shows again once it has been moved (the one you hold and each one it pushes aside)
       m.seen[n] = true; m.seen[m.held] = true;
@@ -2581,8 +2930,9 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     var time = m.tFirst ? (Math.min(now, m.deadline || now) - m.tFirst) / 1000 : 0;
     var seed = (Math.random() * 4294967295) >>> 0;
     var res = makeResult(m.start, m.ev, now - m.t0, m.path, m.b, seed, time, m.dmg);
+    res.slides = m.slides; res.slides[m.held] = { from: [m.px, m.py], at: now };
     res.timeout = !!(m.deadline && now >= m.deadline);
-    S.res = res; S.move = null; S.resT0 = now; S.phase = "resolving"; S.dirty = true;
+    S.res = res; S.move = null; S.resT0 = now + (prefs.noAnim ? 0 : SWAP_MS); S.phase = "resolving"; S.dirty = true;
   }
   function makeResult(start, ev, dur, path, after, seed, time, dmg) {
     var sim = E.resolve(after, S.bd.rows, S.bd.cols, { match: matchK(), skyfall: S.bd.skyfall, probs: E.skyProbs(S.bd.boosts), seed: seed });
@@ -2595,7 +2945,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     var tot = r.dmg + r.sim.bombDmg;
     if (tot) parts.push(t("nDmg", { p: tot, a: r.dmg, b: r.sim.bombDmg }));
     if (r.sim.capped) parts.push(t("nCap"));
-    return parts.join(prefs.lang === "en" ? " " : "");
+    return parts.join(spaced() ? " " : "");
   }
   // what was cleared, per colour: how many groups and how many orbs in each (e.g. 火 2 串（3、4 粒）)
   function breakdown(r) {
@@ -2636,7 +2986,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     if (S.mode === "practice" || S.mode === "pattern") {
       var rank = addBest(r), sky = S.bd.skyfall;
       noteFn(function () {
-        var sep = prefs.lang === "en" ? " " : "　", msg = resultText(r);
+        var sep = spaced() ? " " : "　", msg = resultText(r);
         if (!sky && upper) msg += sep + (r.sim.combos >= upper ? t("nMaxHit") : t("nMax", { m: upper }));
         return msg;
       }, r.sim.combos >= upper ? "good" : "");
@@ -2659,18 +3009,21 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   // ---------- hell mode: 10 timed rounds, scored by average combos ----------
   function hellBoard(prevFinal) {
     if (prefs.hellSky && prevFinal && prevFinal.every(function (v) { return v >= 0; })) { var bd = JSON.parse(JSON.stringify(S.bd)); bd.orbs = prevFinal.slice(); return bd; }
-    var b = randomBd(); b.skyfall = prefs.hellSky; b.dark = b.dim = b.ninja = false; b.boosts = [0, 0, 0, 0, 0, 0]; return b;
+    var b = randomBd(); if (!b) return null;
+    b.skyfall = prefs.hellSky; b.dark = b.dim = b.ninja = false; b.boosts = [0, 0, 0, 0, 0, 0]; return b;
   }
   function hellReady(bd) {
+    if (!bd) { S.hell.state = "error"; S.phase = S.res ? "done" : "ready"; S.move = null; S.dirty = true; syncHud(); syncHell(); noteKey("nGenerateFailed", null, "bad"); return; }
     setBoard(bd, "srcRandom");
     var now = performance.now();
     S.hell.readyAt = now; S.hell.autoAt = now + 1000; S.hell.deadline = 0; S.hell.tStart = 0;
     syncHud(); syncHell();
   }
   function hellStart() {
+    var bd = hellBoard(null);
+    if (!bd) { noteKey("nGenerateFailed", null, "bad"); return; }
     stopAll();
     S.hell = { state: "run", round: 1, results: [], lastC: null };
-    var bd = hellBoard(null);
     setBoard(bd, "srcRandom");
     S.phase = "countdown"; S.hell.cdEnd = performance.now() + 3000; S.hell.autoAt = 0;
     $("btnHell").textContent = t("btnHellAgain");
@@ -2697,7 +3050,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     H.state = "done"; H.avg = avg;
     S.phase = S.res ? "done" : "ready"; S.dirty = true;
     var v = { v: avg.toFixed(2), s: sum, t: (ts / H.results.length).toFixed(2) };
-    noteFn(function () { return t("nHellDone", v) + (best ? (prefs.lang === "en" ? " " : "") + t("nHellNewBest") : ""); }, "good");
+    noteFn(function () { return t("nHellDone", v) + (best ? (spaced() ? " " : "") + t("nHellNewBest") : ""); }, "good");
     syncHud(); syncHell();
   }
   function syncHell() {
@@ -2709,7 +3062,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     });
     $("hlRound").textContent = H ? Math.min(H.round, 10) + "/10" : "–";
     $("hlAvg").textContent = res.length ? (sum / res.length).toFixed(2) : "–";
-    $("hlTime").innerHTML = res.length ? (ts / res.length).toFixed(2) + "<small>" + (prefs.lang === "en" ? "s" : " " + t("sec")) + "</small>" : "–";
+    $("hlTime").innerHTML = res.length ? (ts / res.length).toFixed(2) + "<small>" + (prefs.lang === "en" ? "s" : prefs.lang === "ko" ? "초" : " " + t("sec")) + "</small>" : "–";
     $("hlBest").textContent = prefs.hellBest != null ? prefs.hellBest.toFixed(2) : "–";
   }
 
@@ -2795,18 +3148,18 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     noteKey("nReplay", { c: rec.c, t: rec.t.toFixed(2) }, "");
   }
   function drawReplayMove(now) {
-    var rp = S.replay, rec = rp.rec, tt = (now - rp.t0) * rp.speed, b = rec.s.slice(), held = rec.p[0], steps = 0, nextT = null, dmg = 0;
+    var rp = S.replay, rec = rp.rec, tt = (now - rp.t0) * rp.speed, b = rec.s.slice(), held = rec.p[0], slides = {}, steps = 0, nextT = null, dmg = 0;
     for (var k = 0; k < rec.e.length; k++) {
       var ev = rec.e[k];
       if (ev[0] > tt) { if (ev[1] === "s" && nextT == null) nextT = ev[0]; continue; }
-      if (ev[1] === "s") { if (thorny(b[ev[3]])) dmg += E.THORN_DMG; var x = b[ev[2]]; b[ev[2]] = b[ev[3]]; b[ev[3]] = x; held = ev[3]; steps++; }
+      if (ev[1] === "s") { if (thorny(b[ev[3]])) dmg += E.THORN_DMG; slides[ev[2]] = { from: orbPosition(ev[3], slides, ev[0]), at: ev[0] }; delete slides[ev[3]]; var x = b[ev[2]]; b[ev[2]] = b[ev[3]]; b[ev[3]] = x; held = ev[3]; steps++; }
       else b[ev[2]] = ev[3];
     }
-    drawBoardState(b, now, { skip: held });
+    drawBoardState(b, now, { skip: held, slides: slides, slideTime: tt });
     drawPath(ctx, rec.p, geo.cell, steps, 0.95);
     var hc = center(held), pos = hc;
     if (nextT != null) {
-      var nextCell = rec.p[steps + 1], win = 90, f = Math.max(0, Math.min(1, (tt - (nextT - win)) / win));
+      var nextCell = rec.p[steps + 1], win = SWAP_MS, f = Math.max(0, Math.min(1, (tt - (nextT - win)) / win));
       if (nextCell != null) { var nc = center(nextCell); pos = [hc[0] + (nc[0] - hc[0]) * f, hc[1] + (nc[1] - hc[1]) * f]; }
     }
     ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.65)"; ctx.shadowBlur = 16; drawOrb(ctx, pos[0], pos[1], geo.cell * 1.06, b[held], 0.96); ctx.restore();
@@ -2814,7 +3167,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     bigText(Math.max(0, (Math.min(tt, rec.d) - firstSwap) / 1000).toFixed(2) + "s", geo.cell * 0.15, geo.cell * 0.32, geo.cell * 0.3, "#fff", "left");
     bigText(t("cReplay") + " " + rp.speed + "×", geo.W - geo.cell * 0.15, geo.cell * 0.3, geo.cell * 0.22, "#e3b552", "right", UIFONT);
     hpCorner(dmg);
-    if (tt >= rec.d) { S.phase = "replay-resolve"; S.resT0 = now; }
+    if (tt >= rec.d) { rp.res.slides = slides; S.phase = "replay-resolve"; S.resT0 = now + (prefs.noAnim ? 0 : SWAP_MS / rp.speed); }
   }
 
   // ---------- pool mode (experimental, just for fun) ----------
@@ -3332,10 +3685,19 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     if (S.mode === "pool") { e.preventDefault(); Pool.move(e); return; }
     var p = cellAt(e);
     if (S.edit) { if (S.painting) paintAt(e, false); return; }
-    if (S.phase === "moving") { e.preventDefault(); moveTo(p.x, p.y); }
+    if (S.phase === "moving") {
+      e.preventDefault();
+      var samples = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+      if (!samples.length) samples = [e];
+      for (var i = 0; i < samples.length && S.phase === "moving"; i++) { var q = cellAt(samples[i]); moveTo(q.x, q.y); }
+    }
     else if (ninjaOn() && S.phase === "ready" && e.pointerType === "mouse") S.spot = [p.x, p.y];
   });
-  function up() { if (S.mode === "pool") { Pool.up(); return; } S.painting = false; S.lastPaint = -1; if (S.phase === "moving") finishMove(); }
+  function up(e) {
+    if (S.mode === "pool") { Pool.up(); return; }
+    S.painting = false; S.lastPaint = -1;
+    if (S.phase === "moving") { if (e.type === "pointerup") { var p = cellAt(e); moveTo(p.x, p.y); } finishMove(); }
+  }
   cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
   cv.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse" && S.phase === "ready") S.spot = null; });
 
@@ -3467,7 +3829,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     if (r.start >= 0) list.push(esc(t("nStartFound", { r: Math.floor(r.start / r.cols) + 1, c: r.start % r.cols + 1 })));
     var head = list.length ? esc(t("nReadFound", { size: r.size, list: "\u0001" })).replace("\u0001", list.join(esc(t("listSep")))) : esc(t("nReadPlain", { size: r.size }));
     var tail = r.faded ? W(t("nFaded")) : r.low ? W(t("nLow", { n: r.low })) : esc(t("nFix"));
-    noteHTML(head + (prefs.lang === "en" ? " " : "") + tail, ""); S.lastNote = { report: true };
+    noteHTML(head + (spaced() ? " " : "") + tail, ""); S.lastNote = { report: true };
     syncMini();
   }
   // mini copy of the uploaded screenshot (just the board), beside the read-out and in the edit toolbar; tap to enlarge
@@ -3532,6 +3894,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   function randomBd() {
     var rc = sizeRC(), bd = copySettings(blankBoard(rc[0], rc[1]), S.bd);
     bd.orbs = E.randomBoard(bd.rows, bd.cols, prefs.exp ? bd.match : 3, E.rng((Math.random() * 4294967295) >>> 0), null, randColors());
+    if (!bd.orbs) return null;
     bd.start = -1;
     return bd;
   }
@@ -3545,16 +3908,18 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     var r = S.res, fin = r && r.sim && r.sim.final;
     if (fresh !== true && fin && fin.length === N()) {
       var bd = JSON.parse(JSON.stringify(S.bd)), cols = randColors();
-      bd.orbs = fin.map(function (v) { return v >= 0 ? v : cols[Math.floor(Math.random() * cols.length)]; });
+      bd.orbs = E.randomBoard(bd.rows, bd.cols, matchK(), E.rng((Math.random() * 4294967295) >>> 0), null, cols, fin);
+      if (!bd.orbs) { noteKey("nRefillFailed", null, "bad"); return false; }
       bd.start = -1;
-      var keepNote = S.lastNote;
       setBoard(bd, "srcCont");
       syncResultFrom(r); showBreakdown(r); S.lastRec = toRec(r); $("btnReplay").disabled = false; $("btnSave").disabled = false;
-      return;
+      return true;
     }
-    setBoard(randomBd(), "srcRandom");
+    return setBoard(randomBd(), "srcRandom");
   }
   function setMode(mode, keepBoard) {
+    var hb = mode === "hell" ? hellBoard(null) : null;
+    if (mode === "hell" && !hb) { noteKey("nGenerateFailed", null, "bad"); return; }
     stopAll(); if (S.edit) setEdit(false);
     S.mode = mode;
     document.body.classList.remove("m-practice", "m-endless", "m-hell", "m-pool", "m-pattern"); document.body.classList.add("m-" + mode);
@@ -3569,11 +3934,11 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     $("cardRecords").hidden = mode === "hell" || pool;
     if (mode !== "hell") S.hell = null;
     syncStatUI();
-    if (mode === "endless") { nextEndless(true); syncStats(); noteKey("nEndless", null, ""); }
-    else if (mode === "hell") { S.hell = { state: "idle", round: 0, results: [] }; var hb = hellBoard(null); setBoard(hb, "srcRandom"); $("btnHell").textContent = t("btnHellStart"); syncHell(); noteKey("nHellIntro", null, ""); }
+    if (mode === "endless") { if (nextEndless(true)) { syncStats(); noteKey("nEndless", null, ""); } }
+    else if (mode === "hell") { S.hell = { state: "idle", round: 0, results: [] }; setBoard(hb, "srcRandom"); $("btnHell").textContent = t("btnHellStart"); syncHell(); noteKey("nHellIntro", null, ""); }
     else if (mode === "pattern") { Pat.ensure(); Pat.play(Pat.active()); }
     else if (pool) { var pb = E.decode(load("pt.practice", "")); if (pb) { S.bd = pb; S.live = pb.orbs.slice(); } layout(); Pool.rack(); }
-    else if (!keepBoard) { var saved = E.decode(load("pt.practice", "")); setBoard(saved || randomBd(), saved ? S.src : "srcRandom"); noteKey("noteIdle", null, ""); }
+    else if (!keepBoard) { var saved = E.decode(load("pt.practice", "")); if (setBoard(saved || randomBd(), saved ? S.src : "srcRandom")) noteKey("noteIdle", null, ""); }
   }
   function segBind(id, fn) {
     $(id).addEventListener("click", function (e) {
@@ -3586,7 +3951,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   $("btnHell").addEventListener("click", hellStart);
   $("btnPool").addEventListener("click", function () { Pool.rack(); });
   $("btnSuper").addEventListener("click", function () { Pool.toggleSuper(); });
-  $("btnRandom").addEventListener("click", function () { setBoard(randomBd(), "srcRandom"); noteKey("nNew", null, ""); });
+  $("btnRandom").addEventListener("click", function () { if (setBoard(randomBd(), "srcRandom")) noteKey("nNew", null, ""); });
   $("modeTabs").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b && b.dataset.mode !== S.mode) { if (S.mode === "practice") save("pt.practice", code()); setMode(b.dataset.mode); } });
   // ---------- quick-change tags above the board ----------
   function closeMenu() { $("chipMenu").hidden = true; S.menuFor = null; }
@@ -3597,7 +3962,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
     function opt(label, on, fn) { var b = document.createElement("button"); b.type = "button"; b.className = "small"; b.textContent = label; b.setAttribute("aria-pressed", on ? "true" : "false"); b.addEventListener("click", function () { fn(); closeMenu(); }); m.appendChild(b); }
     if (kind === "size") {
       var sizes = [["4x5", "5×4"], ["5x6", "6×5"], ["6x7", "7×6"]]; if (prefs.exp) sizes.push(["10x6", t("size10")]);
-      sizes.forEach(function (s) { opt(s[1], prefs.size === s[0], function () { prefs.size = s[0]; savePrefs(); if (S.mode === "hell") { if (!S.hell || S.hell.state !== "run") setBoard(hellBoard(null), "srcRandom"); } else { setBoard(randomBd(), "srcRandom"); if (S.mode === "practice") noteKey("nNew", null, ""); } }); });
+      sizes.forEach(function (s) { opt(s[1], prefs.size === s[0], function () { prefs.size = s[0]; savePrefs(); if (S.mode === "hell") { if (!S.hell || S.hell.state !== "run") setBoard(hellBoard(null), "srcRandom"); } else { if (setBoard(randomBd(), "srcRandom") && S.mode === "practice") noteKey("nNew", null, ""); } }); });
     } else if (kind === "time") {
       var hell = S.mode === "hell", cur = timeLimit();
       if (!hell) opt(t("chipNoLimit"), !cur, function () { prefs.timeInf = true; savePrefs(); syncSettings(); syncHud(); });
@@ -3612,7 +3977,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
       var grid = document.createElement("div"); grid.className = "order"; grid.id = "randGridQuick"; m.appendChild(grid);
       buildRandInto(grid);
       var again = document.createElement("button"); again.type = "button"; again.className = "small primary"; again.textContent = t("randAgain");
-      again.addEventListener("click", function () { closeMenu(); if (S.mode === "hell") { if (!S.hell || S.hell.state !== "run") setBoard(hellBoard(null), "srcRandom"); } else { setBoard(randomBd(), "srcRandom"); if (S.mode === "practice") noteKey("nNew", null, ""); } });
+      again.addEventListener("click", function () { closeMenu(); if (S.mode === "hell") { if (!S.hell || S.hell.state !== "run") setBoard(hellBoard(null), "srcRandom"); } else { if (setBoard(randomBd(), "srcRandom") && S.mode === "practice") noteKey("nNew", null, ""); } });
       m.appendChild(again);
     }
     m.hidden = false;
@@ -3754,7 +4119,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   function syncSettings() {
     $("timeLimit").value = prefs.timeLimit; $("timeInf").checked = prefs.timeInf; $("timeLimit").disabled = prefs.timeInf;
     $("sky").checked = S.bd.skyfall; $("dim").checked = !!S.bd.dim; $("ninja").checked = !!S.bd.ninja; $("roulPeriod").value = S.bd.roulPeriod;
-    $("useSkins").checked = prefs.useSkins; $("teach").checked = !!prefs.teach; $("exp").checked = prefs.exp; $("expBox").hidden = !prefs.exp; $("autoNext").checked = prefs.autoNext;
+    $("useSkins").checked = prefs.useSkins; $("noGlow").checked = !!prefs.noGlow; $("noAnim").checked = !!prefs.noAnim; $("teach").checked = !!prefs.teach; $("exp").checked = prefs.exp; $("expBox").hidden = !prefs.exp; $("autoNext").checked = prefs.autoNext;
     Array.prototype.forEach.call($("matchSeg").children, function (b) { b.setAttribute("aria-pressed", +b.dataset.k === matchK() ? "true" : "false"); b.textContent = t("kOrbs", { k: b.dataset.k }); });
     Array.prototype.forEach.call($("speedSeg").children, function (b) { b.setAttribute("aria-pressed", +b.dataset.s === prefs.speed ? "true" : "false"); });
     $("roulNote").hidden = hasRoulette();
@@ -3766,17 +4131,22 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   $("dim").addEventListener("change", function () { S.bd.dim = this.checked; boardSettingChanged(); });
   $("ninja").addEventListener("change", function () { S.bd.ninja = this.checked; boardSettingChanged(); });
   $("roulPeriod").addEventListener("change", function () { S.bd.roulPeriod = Math.max(0.2, Math.min(10, Math.round((+this.value || 1) * 10) / 10)); this.value = S.bd.roulPeriod; boardSettingChanged(); });
+  $("noGlow").addEventListener("change", function () { prefs.noGlow = this.checked; savePrefs(); orbCache = {}; decoCache = {}; decoCount = 0; skinGen++; buildPalette(); buildSettingsGrids(); if (S.bd) showBreakdown(S.phase === "done" ? S.res : null); S.dirty = true; });
+  $("noAnim").addEventListener("change", function () { prefs.noAnim = this.checked; savePrefs(); S.dirty = true; });
   $("useSkins").addEventListener("change", function () { prefs.useSkins = this.checked; savePrefs(); buildPalette(); buildSettingsGrids(); S.dirty = true; });
   $("teach").addEventListener("change", function () { prefs.teach = this.checked; savePrefs(); });
   $("btnClearLearn").addEventListener("click", function () { exemplars = []; save("pt.ex", exemplars); syncLearnNote(); if (S.imgData && S.rect) readShot(false); });
   $("btnClearSkins").addEventListener("click", function () { skinData = {}; save("pt.skins", skinData); applySkins(); S.dirty = true; });
   $("exp").addEventListener("change", function () {
+    var oldSize = prefs.size;
     prefs.exp = this.checked;
     if (!prefs.exp) {
       if (prefs.size === "10x6") prefs.size = "5x6";
+      var bd = S.bd.rows > 7 ? randomBd() : null;
+      if (S.bd.rows > 7 && !bd) { prefs.exp = true; prefs.size = oldSize; this.checked = true; noteKey("nGenerateFailed", null, "bad"); return; }
       S.bd.match = 3; S.bd.ninja = false;
       S.bd.orbs = S.bd.orbs.map(function (v) { return base(v) === 11 ? Math.floor(Math.random() * 6) : v; });
-      if (S.bd.rows > 7) { savePrefs(); setBoard(randomBd(), "srcRandom"); }
+      if (S.bd.rows > 7) { bd.ninja = false; savePrefs(); setBoard(bd, "srcRandom"); }
       else { S.live = S.bd.orbs.slice(); }
     }
     savePrefs(); syncSettings(); buildPalette(); boardSettingChanged(); syncPoolTab();
@@ -3916,13 +4286,13 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   function syncResult() { showBreakdown(null); ["vCombo", "vTime", "vSteps"].forEach(function (id) { $(id).textContent = "–"; }); $("rCombo").classList.remove("hit"); $("btnReplay").disabled = !S.lastRec; $("btnSave").disabled = true; $("btnContinue").hidden = true; }
   function syncResultFrom(r) {
     $("vCombo").textContent = r.sim.combos;
-    $("vTime").innerHTML = r.time.toFixed(2) + "<small>" + (prefs.lang === "en" ? "s" : " " + t("sec")) + "</small>";
+    $("vTime").innerHTML = r.time.toFixed(2) + "<small>" + (prefs.lang === "en" ? "s" : prefs.lang === "ko" ? "초" : " " + t("sec")) + "</small>";
     $("vSteps").textContent = r.steps;
   }
   function syncStats() {
     $("stRounds").textContent = stats.n;
     $("stAvgC").textContent = stats.n ? (stats.combos / stats.n).toFixed(2) : "–";
-    $("stAvgT").innerHTML = stats.timed ? (stats.time / stats.timed).toFixed(2) + "<small>" + (prefs.lang === "en" ? "s" : " " + t("sec")) + "</small>" : "–";
+    $("stAvgT").innerHTML = stats.timed ? (stats.time / stats.timed).toFixed(2) + "<small>" + (prefs.lang === "en" ? "s" : prefs.lang === "ko" ? "초" : " " + t("sec")) + "</small>" : "–";
     $("stBest").textContent = stats.n ? stats.best : "–";
   }
   function syncAll() { S.lastRec = null; layout(); if ($("shotMini")) syncMini(); syncHud(); syncCode(); syncRecords(); syncSettings(); syncResult(); S.roulNext = performance.now() + S.bd.roulPeriod * 1000; S.dirty = true; }
