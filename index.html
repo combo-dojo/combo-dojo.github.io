@@ -1018,6 +1018,22 @@ var Vision = (function () {
     return { data: d, width: w, height: H, _crop: true };
   }
   function detect(img, forced) {
+    // black bars on the sides (a portrait game shown on a wider screen, or a padded screenshot): read inside them
+    if (!img._crop && !img._trim) {
+      var W0 = img.width, H0 = img.height, colDark = function (x) {
+        var lit = 0, n = 0; // a stray line or a notification edge may cross the bar: allow a few lit samples
+        for (var y = 0; y < H0; y += Math.max(1, Math.floor(H0 / 200))) { var k = (y * W0 + x) * 4; n++; if (Math.max(img.data[k], img.data[k + 1], img.data[k + 2]) > 24) lit++; }
+        return lit <= n * 0.03;
+      }, run = Math.max(3, Math.round(W0 * 0.03)), L0 = 0, R0 = W0 - 1, x, j;
+      // walk out from the middle; the game ends where a solid run of dark columns starts (stray lines further out don't matter)
+      var darkRun = function (x0, dir) { for (var q = 0; q < run; q++) { var xx = x0 + q * dir; if (xx < 0 || xx >= W0) return q > 0; if (!colDark(xx)) return false; } return true; };
+      for (x = Math.floor(W0 / 2); x < W0; x++) if (colDark(x) && darkRun(x, 1)) { R0 = x - 1; break; }
+      for (x = Math.floor(W0 / 2); x >= 0; x--) if (colDark(x) && darkRun(x, -1)) { L0 = x + 1; break; }
+      if (L0 > W0 * 0.04 || R0 < W0 * 0.96) {
+        var sub0 = cropRight(img, L0, R0 + 1); sub0._trim = true; sub0._crop = false;
+        var d0 = detect(sub0, forced); d0.x += L0; return d0;
+      }
+    }
     if (!img._crop && img.width > img.height * 1.3) {
       var bestL = detect({ data: img.data, width: img.width, height: img.height, _crop: true }, forced), big = function (q) { return q.rows * q.cols; };
       [0.4, 0.5].forEach(function (f) { [1, 0.975].forEach(function (e) {
@@ -1817,7 +1833,7 @@ I18N.en.rule1 = I18N.en.rule1.replace("During <b>super darkness</b> no orbs are 
   var $ = function (id) { return document.getElementById(id); };
   var E = Engine, THORN = E.THORN, NOCLR = E.NOCLR, noclr = E.noclr, F_CLOUD = E.F_CLOUD, F_ROUL = E.F_ROUL, F_TAPE = E.F_TAPE, SDARK = E.SDARK, sdark = E.sdark, WEAK = E.WEAK, weak = E.weak, base = E.base, thorny = E.thorny;
   // shown next to the credit so you can tell which build a page is running; bump on every release
-  var APP_VERSION = "v41", APP_DATE = "2026-10-22";
+  var APP_VERSION = "v42", APP_DATE = "2026-10-22";
   document.querySelectorAll("[data-ver]").forEach(function (el) { el.textContent = APP_VERSION + " · " + APP_DATE; });
   var ARTIFACT_URL = "https://claude.ai/artifact/6eMnzVK1q9utd1UdrGrUmd";
 
